@@ -1,9 +1,3 @@
-<p align="center">
-<i>"Error establishing connection to reality. Proceeding with coding."</i>
-</p>
-
-<p align="left">
-<code>
 shrimp@terminal - ---------------------------------------
 | OS: ..................... Windows 10, Android 14, Linux
 | Uptime: ................... 14 years, 8 months, 10 days
@@ -21,7 +15,3 @@ shrimp@terminal - ---------------------------------------
 - Contact - ---------------------------------------------
 | Email.Personal: ............ one.walmart.bag@gmail.com
 | Discord: .............................. imjusta_shrimp
-  
-
-🌱 🌿 🌾 🍃 🌳 🍃 🌾 🌿 🌱
-</p>
