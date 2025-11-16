@@ -9,7 +9,7 @@ shrimp@terminal - ---------------------------------------
 | Uptime: ................... 14 years, 8 months, 10 days
 | Host: .......................... Tesla STEM High School
 | Kernel: ........ Game Dev, Student, Researcher, Violist
-| IDE: ........... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
+| IDE: .......... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
   
 | Languages.Programming: ......................... Python
 | Languages.Computer: ......................... HTML, CSS
