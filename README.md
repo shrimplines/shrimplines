@@ -3,8 +3,8 @@ shrimp@terminal - ---------------------------------------
 | OS: ..................... Windows 10, Android 14, Linux
 | Uptime: ................... 14 years, 8 months, 10 days
 | Host: .......................... Tesla STEM High School
-| Kernel: ........ Game Dev, Student, Researcher, Violist
-| IDE: .......... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
+| Kernel: .................... Game Dev, Student, Violist
+| IDE: ........... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
   
 | Languages.Programming: ......................... Python
 | Languages.Computer: ......................... HTML, CSS
@@ -14,6 +14,6 @@ shrimp@terminal - ---------------------------------------
 | Hobbies.Hardware: .............. CAD, Adobe Illustrator
 
 - Contact - ---------------------------------------------
-| Email.Personal: ............ one.walmart.bag@gmail.com
-| Discord: .............................. imjusta_shrimp
+| Email.Personal: ............. one.walmart.bag@gmail.com
+| Discord: ............................... imjusta_shrimp
 </pre>
