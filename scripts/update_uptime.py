@@ -1,39 +1,33 @@
+```python
 import re
 from datetime import datetime
 
 BORN = datetime(2011, 3, 6, 16, 52)
 
-def get_uptime():
+def update_readme():
     now = datetime.now()
     diff = now - BORN
     
-    # Standard date math for display
+    # Logic for years/months/days
     years = diff.days // 365
-    days_left = diff.days % 365
-    months = days_left // 30
-    days = days_left % 30
+    months = (diff.days % 365) // 30
+    days = (diff.days % 365) % 30
     
-    return f"| Uptime: ................... {years} years, {months} months, {days} days"
-
-def update_readme():
-    uptime_string = get_uptime()
+    # Create the lines that will go into the README
+    uptime_line = f"| Uptime: ................... {years} years, {months} months, {days} days"
+    login_line = f"| Last Login: ............... {now.strftime('%b %d, %H:%M')} PST on ttys000"
     
-    try:
-        with open("README.md", "r", encoding="utf-8") as f:
-            content = f.read()
+    new_data = f"\n{uptime_line}\n{login_line}\n"
 
-        # This regex looks for the markers and replaces what's inside
-        pattern = r".*?"
-        replacement = f"\n{uptime_string}\n"
-        
-        new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+    with open("README.md", "r", encoding="utf-8") as f:
+        content = f.read()
 
-        with open("README.md", "w", encoding="utf-8") as f:
-            f.write(new_content)
-        print("Successfully updated README uptime.")
-        
-    except FileNotFoundError:
-        print("Error: README.md not found.")
+    # Find the markers and swap the old text with the new time
+    pattern = r".*?"
+    updated_content = re.sub(pattern, new_data, content, flags=re.DOTALL)
+
+    with open("README.md", "w", encoding="utf-8") as f:
+        f.write(updated_content)
 
 if __name__ == "__main__":
     update_readme()
