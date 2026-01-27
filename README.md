@@ -1,7 +1,8 @@
-<pre>
+```text
 shrimp@terminal - ---------------------------------------
 | OS: ..................... Windows 10, Android 14, Linux
 | Uptime: ................... 14 years, 10 months, 21 days
+| Last Login: ............... Jan 27, 14:28 PST on ttys000
 | Host: .......................... Tesla STEM High School
 | Kernel: .................... Game Dev, Student, Violist
 | IDE: ........... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
@@ -16,4 +17,5 @@ shrimp@terminal - ---------------------------------------
 - Contact - ---------------------------------------------
 | Email.Personal: ............. one.walmart.bag@gmail.com
 | Discord: ............................... imjusta_shrimp
-</pre>
+|
+| _ > █
