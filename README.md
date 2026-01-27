@@ -1,11 +1,11 @@
-<div align="center">
-
-![Status](https://img.shields.io/badge/SYSTEM-ACTIVE-00FF00?style=for-the-badge&logo=githubactions&logoColor=white)
-![Mood](https://img.shields.io/badge/MOOD-COFFEE_REQUIRED-orange?style=for-the-badge)
-
-</div>
-
-<table align="center"><tr><td>
+<table align="center">
+<tr>
+<th align="left">
+&nbsp; 🔴 &nbsp; 🟡 &nbsp; 🟢
+</th>
+</tr>
+<tr>
+<td>
 
 ```text
 shrimp@terminal - ---------------------------------------
