@@ -12,7 +12,7 @@
 ```text
 shrimp@terminal - ---------------------------------------
 | OS: ..................... Windows 10, Android 14, Linux
-| Uptime: ................... 14 years, 11 months, 6 days| Host: .......................... Tesla STEM High School
+| Uptime: ................... 14 years, 11 months, 7 days| Host: .......................... Tesla STEM High School
 | Kernel: .................... Game Dev, Student, Violist
 | IDE: ........... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
   
