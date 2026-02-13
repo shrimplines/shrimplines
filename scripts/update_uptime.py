@@ -1,33 +1,36 @@
 ```python
+import datetime
 import re
-from datetime import datetime
-
-BORN = datetime(2011, 3, 6, 16, 52)
 
 def update_readme():
-    now = datetime.now()
-    diff = now - BORN
-    
-    # Logic for years/months/days
-    years = diff.days // 365
-    months = (diff.days % 365) // 30
-    days = (diff.days % 365) % 30
-    
-    # Create the lines that will go into the README
-    uptime_line = f"| Uptime: ................... {years} years, {months} months, {days} days"
-    login_line = f"| Last Login: ............... {now.strftime('%b %d, %H:%M')} PST on ttys000"
-    
-    new_data = f"\n{uptime_line}\n{login_line}\n"
+    # Born March 6, 2011
+    birth_date = datetime.date(2011, 3, 6)
+    today = datetime.date.today()
+
+    years = today.year - birth_date.year
+    months = today.month - birth_date.month
+    days = today.day - birth_date.day
+
+    if days < 0:
+        months -= 1
+        days += 30
+    if months < 0:
+        years -= 1
+        months += 12
+
+    uptime_str = f"{years} years, {months} months, {days} days"
 
     with open("README.md", "r", encoding="utf-8") as f:
         content = f.read()
 
-    # Find the markers and swap the old text with the new time
+    # Pattern looks strictly for the markers on the same line
     pattern = r".*?"
-    updated_content = re.sub(pattern, new_data, content, flags=re.DOTALL)
+    replacement = f"{uptime_str}"
+    
+    new_content = re.sub(pattern, replacement, content)
 
     with open("README.md", "w", encoding="utf-8") as f:
-        f.write(updated_content)
+        f.write(new_content)
 
 if __name__ == "__main__":
     update_readme()
