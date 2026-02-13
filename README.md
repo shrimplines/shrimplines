@@ -12,7 +12,50 @@
 ```text
 shrimp@terminal - ---------------------------------------
 | OS: ..................... Windows 10, Android 14, Linux
-| Uptime: ................... 14 years, 10 months, 21 days
+| Uptime: ................... 14 years, 11 months, 7 days```
+> **Note:** The `` markers are invisible to people looking at your profile, but they let the script know exactly where to "cut and paste" the new time.
+
+---
+
+## 2. The script: `scripts/update_uptime.py`
+Create this file in your `scripts` folder. This does the math and the file editing.
+
+```python
+import datetime
+import re
+
+def update_readme():
+    # Your birthday: March 6, 2011
+    birth_date = datetime.date(2011, 3, 6)
+    today = datetime.date.today()
+
+    years = today.year - birth_date.year
+    months = today.month - birth_date.month
+    days = today.day - birth_date.day
+
+    # Basic date math correction
+    if days < 0:
+        months -= 1
+        days += 30
+    if months < 0:
+        years -= 1
+        months += 12
+
+    uptime_str = f"{years} years, {months} months, {days} days"
+
+    with open("README.md", "r", encoding="utf-8") as f:
+        content = f.read()
+
+    # This regex finds the markers and replaces only the text inside them
+    pattern = r".*?"
+    replacement = f"{uptime_str}"
+    new_content = re.sub(pattern, replacement, content)
+
+    with open("README.md", "w", encoding="utf-8") as f:
+        f.write(new_content)
+
+if __name__ == "__main__":
+    update_readme()
 | Host: .......................... Tesla STEM High School
 | Kernel: .................... Game Dev, Student, Violist
 | IDE: ........... IDEA 2024.1, VSCode 1.98.0, GitHub CLI
