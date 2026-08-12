@@ -51,8 +51,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Updates child state (possibly to null) and reflects it in the URL.
-  // Used by both passive scroll tracking and the bottom-of-pane safeguard.
   function markCurrentSubsection(section, sub) {
     if (sub === currentSubsection) return;
     currentSubsection = sub;
@@ -89,9 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
         intersecting[entry.target.id] = entry.isIntersecting;
       });
 
-      // Active subsection is the first one (in document order) currently
-      // inside the detection band. If none are, no child is active yet —
-      // this covers both "above the first child" and "below the last".
       var active = null;
       for (var i = 0; i < sectionOrder.length; i++) {
         if (intersecting[sectionOrder[i]]) {
@@ -103,7 +98,12 @@ document.addEventListener("DOMContentLoaded", function () {
       markCurrentSubsection(section, active);
     }, {
       root: contentArea,
-      rootMargin: "-10% 0px -55% 0px",
+      // Reading-line approach: a thin (~1%) band positioned ~20% down the
+      // pane, rather than a wide zone. A section only becomes "active" once
+      // it actually reaches this reading position, and it holds that state
+      // until the next section's top crosses the same line — this is what
+      // prevents a sliver of the next section triggering a premature switch.
+      rootMargin: "-20% 0px -79% 0px",
       threshold: 0
     });
 
@@ -145,9 +145,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 600);
   }
 
-  // subsection is either an explicit child target or null — a parent click
-  // (or a URL with no child segment) always means "go to the beginning of
-  // this section," never "go to its first child."
   function navigateTo(section, subsection, opts) {
     opts = opts || {};
     var pushHistory = opts.pushHistory !== false;
@@ -188,8 +185,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   topButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
-      // Explicit parent click: always go to the section's beginning,
-      // never infer a child.
       navigateTo(btn.dataset.target, null, { pushHistory: true });
     });
   });
