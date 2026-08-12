@@ -1,0 +1,138 @@
+/* ============================================
+   FONT LOADING
+   Matched exactly to your assets/fonts/ directory structure
+   ============================================ */
+
+/* Handjet Variable Font */
+@font-face {
+    font-family: 'Handjet';
+    src: url('../fonts/Handjet/Handjet-VariableFont_ELGR,ELSH,wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+/* Geist Sans Variable Font */
+@font-face {
+    font-family: 'Geist Sans';
+    src: url('../fonts/Geist/Geist-VariableFont_wght.ttf') format('truetype');
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+/* Optional: Geist Pixel Variable Font (if needed for secondary headings) */
+@font-face {
+    font-family: 'Geist Pixel';
+    src: url('../fonts/Geist_Pixel/GeistPixel-Regular-VariableFont_ELSH.ttf') format('truetype');
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+/* ============================================
+   TYPOGRAPHY TOKENS
+   Centralized configuration
+   ============================================ */
+
+:root {
+    /* Families */
+    --font-display: 'Handjet', sans-serif;
+    --font-body: 'Geist Sans', sans-serif;
+
+    /* Sizes */
+    --text-parent-size: 3.25rem;
+    --text-chapter-size: 1.5rem;
+    --text-body-size: 1rem;
+    --text-meta-size: 0.8rem;
+    --text-nav-parent-size: 1rem;
+    --text-nav-child-size: 0.9rem;
+
+    /* Line heights */
+    --leading-display: 1.1;
+    --leading-chapter: 1.25;
+    --leading-body: 1.6;
+    --leading-meta: 1.4;
+
+    /* Weights */
+    --weight-chapter: 500;
+    --weight-body: 400;
+    --weight-nav-parent: 500;
+    --weight-nav-child: 400;
+    --weight-meta: 400;
+
+    /* Letter spacing */
+    --tracking-parent: 0.01em;
+    --tracking-meta: 0.03em;
+
+    /* Handjet variable-font axis settings */
+    --handjet-weight: 360;
+    --handjet-grid: 8;
+    /* ELGR axis (Grid size / Chunky pixels) */
+    --handjet-shape: 1;
+    /* ELSH axis (Element shape: 1=Square blocks) */
+}
+
+/* ============================================
+   BASE READABILITY
+   ============================================ */
+
+body {
+    font-family: var(--font-body);
+    font-size: var(--text-body-size);
+    line-height: var(--leading-body);
+    font-weight: var(--weight-body);
+}
+
+/* ============================================
+   PARENT / PAGE HEADERS — Handjet
+   ============================================ */
+
+.page-header {
+    font-family: var(--font-display);
+    font-size: var(--text-parent-size);
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-parent);
+    font-variation-settings:
+        "wght" var(--handjet-weight),
+        "ELGR" var(--handjet-grid),
+        "ELSH" var(--handjet-shape);
+    margin: 0 0 1rem 0;
+}
+
+/* ============================================
+   CHILD / CHAPTER HEADINGS — Geist Sans
+   ============================================ */
+
+.chapter-heading {
+    font-family: var(--font-body);
+    font-size: var(--text-chapter-size);
+    line-height: var(--leading-chapter);
+    font-weight: var(--weight-chapter);
+    margin: 0 0 0.5rem 0;
+}
+
+/* ============================================
+   NAVIGATION TYPE — Geist Sans
+   ============================================ */
+
+.nav-label {
+    font-family: var(--font-body);
+    font-size: var(--text-nav-parent-size);
+    font-weight: var(--weight-nav-parent);
+}
+
+.nav-child {
+    font-family: var(--font-body);
+    font-size: var(--text-nav-child-size);
+    font-weight: var(--weight-nav-child);
+}
+
+/* ============================================
+   METADATA
+   ============================================ */
+
+.meta {
+    font-family: var(--font-body);
+    font-size: var(--text-meta-size);
+    font-weight: var(--weight-meta);
+    line-height: var(--leading-meta);
+    letter-spacing: var(--tracking-meta);
+}
