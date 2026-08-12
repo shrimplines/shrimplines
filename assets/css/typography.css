@@ -1,6 +1,5 @@
 /* ============================================
    FONT LOADING
-   Matched exactly to your assets/fonts/ directory structure
    ============================================ */
 
 /* Handjet Variable Font */
@@ -21,7 +20,7 @@
     font-display: swap;
 }
 
-/* Optional: Geist Pixel Variable Font (Dormant for now) */
+/* Geist Pixel Variable Font (Dormant) */
 @font-face {
     font-family: 'Geist Pixel';
     src: url('../fonts/Geist_Pixel/GeistPixel-Regular-VariableFont_ELSH.ttf') format('truetype-variations'),
@@ -32,7 +31,6 @@
 
 /* ============================================
    TYPOGRAPHY TOKENS
-   Centralized configuration
    ============================================ */
 
 :root {
@@ -68,9 +66,9 @@
     /* Handjet variable-font axis settings */
     --handjet-weight: 360;
     --handjet-grid: 8;
-    /* ELGR axis (Grid size / Chunky pixels) */
+    /* ELGR axis */
     --handjet-shape: 1;
-    /* ELSH axis (Element shape: 1=Square blocks) */
+    /* ELSH axis */
 }
 
 /* ============================================
@@ -85,7 +83,33 @@ body {
 }
 
 /* ============================================
-   PARENT / PAGE HEADERS — Handjet
+   AUTO-TARGETING DEFAULT TAGS (Baseline Styles)
+   Target standard HTML tags automatically so standard markdown/HTML works out of the box.
+   ============================================ */
+
+h1 {
+    font-family: var(--font-display);
+    font-size: var(--text-parent-size);
+    line-height: var(--leading-display);
+    letter-spacing: var(--tracking-parent);
+    font-variation-settings:
+        "wght" var(--handjet-weight),
+        "ELGR" var(--handjet-grid),
+        "ELSH" var(--handjet-shape);
+    margin: 0 0 1rem 0;
+}
+
+h2 {
+    font-family: var(--font-body);
+    font-size: var(--text-chapter-size);
+    line-height: var(--leading-chapter);
+    font-weight: var(--weight-chapter);
+    margin: 0 0 0.5rem 0;
+}
+
+/* ============================================
+   EXPLICIT CLASSES (Higher Specificity)
+   Can be used to override or apply explicitly to non-h1/h2 elements
    ============================================ */
 
 .page-header {
@@ -100,10 +124,6 @@ body {
     margin: 0 0 1rem 0;
 }
 
-/* ============================================
-   CHILD / CHAPTER HEADINGS — Geist Sans
-   ============================================ */
-
 .chapter-heading {
     font-family: var(--font-body);
     font-size: var(--text-chapter-size);
@@ -111,10 +131,6 @@ body {
     font-weight: var(--weight-chapter);
     margin: 0 0 0.5rem 0;
 }
-
-/* ============================================
-   NAVIGATION TYPE — Geist Sans
-   ============================================ */
 
 .nav-label {
     font-family: var(--font-body);
@@ -127,10 +143,6 @@ body {
     font-size: var(--text-nav-child-size);
     font-weight: var(--weight-nav-child);
 }
-
-/* ============================================
-   METADATA
-   ============================================ */
 
 .meta {
     font-family: var(--font-body);
