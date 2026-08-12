@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
-  var buttons = document.querySelectorAll(".nav-label");
   var sections = document.querySelectorAll(".nav-section");
+  var topButtons = document.querySelectorAll(".nav-label");
+  var childButtons = document.querySelectorAll(".nav-child");
   var contentArea = document.getElementById("content-area");
   var baseurl = document.body.dataset.baseurl || "";
   var defaultSection = "about";
@@ -9,10 +10,53 @@ document.addEventListener("DOMContentLoaded", function () {
     return s.dataset.section;
   });
 
-  function loadContent(target) {
-    fetch(baseurl + "/content/" + target + ".html")
+  var currentSection = null;
+  var currentSubsection = null;
+  var currentObserver = null;
+  var isProgrammaticScroll = false;
+  var scrollLockTimer = null;
+
+  function firstChildOf(section) {
+    var el = document.querySelector('.nav-section[data-section="' + section + '"]');
+    return (el && el.dataset.firstChild) || null;
+  }
+
+  function buildPath(section, subsection) {
+    return baseurl + "/" + section + (subsection ? "/" + subsection : "");
+  }
+
+  function parsePath() {
+    var path = window.location.pathname;
+    if (baseurl && path.indexOf(baseurl) === 0) {
+      path = path.slice(baseurl.length);
+    }
+    path = path.replace(/^\/|\/$/g, "");
+    if (!path) {
+      return { section: defaultSection, subsection: null };
+    }
+    var parts = path.split("/");
+    if (validSections.indexOf(parts[0]) === -1) {
+      return { section: defaultSection, subsection: null };
+    }
+    return { section: parts[0], subsection: parts[1] || null };
+  }
+
+  function setActiveSection(section) {
+    sections.forEach(function (s) {
+      s.classList.toggle("active", s.dataset.section === section);
+    });
+  }
+
+  function setActiveChild(section, sub) {
+    childButtons.forEach(function (btn) {
+      btn.classList.toggle("active", !!sub && btn.dataset.target === section + "/" + sub);
+    });
+  }
+
+  function loadContent(section) {
+    return fetch(baseurl + "/content/" + section + ".html")
       .then(function (res) {
-        if (!res.ok) throw new Error("Failed to load " + target);
+        if (!res.ok) throw new Error("Failed to load " + section);
         return res.text();
       })
       .then(function (html) {
@@ -24,39 +68,98 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
-  function activate(target, updateHash) {
-    if (validSections.indexOf(target) === -1) {
-      target = defaultSection;
-    }
+  function setupSubsectionObserver(section) {
+    if (currentObserver) currentObserver.disconnect();
+    var els = contentArea.querySelectorAll(".content-section");
+    if (!els.length) return;
 
-    sections.forEach(function (s) {
-      s.classList.toggle("active", s.dataset.section === target);
+    currentObserver = new IntersectionObserver(function (entries) {
+      if (isProgrammaticScroll) return;
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var sub = entry.target.id;
+        if (sub === currentSubsection) return;
+        currentSubsection = sub;
+        setActiveChild(section, sub);
+        history.replaceState({ section: section, subsection: sub }, "", buildPath(section, sub));
+      });
+    }, {
+      root: contentArea,
+      // Treat a section as "current" once it's within the top ~30% of the
+      // viewport, so the URL updates a beat before it reaches the very top.
+      rootMargin: "-10% 0px -70% 0px",
+      threshold: 0
     });
 
-    loadContent(target);
+    els.forEach(function (el) { currentObserver.observe(el); });
+  }
 
-    if (updateHash !== false && window.location.hash !== "#" + target) {
-      window.location.hash = target;
+  function scrollToSubsection(id, behavior) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    isProgrammaticScroll = true;
+    el.scrollIntoView({ behavior: behavior, block: "start" });
+    window.clearTimeout(scrollLockTimer);
+    scrollLockTimer = window.setTimeout(function () {
+      isProgrammaticScroll = false;
+    }, 600);
+  }
+
+  function navigateTo(section, subsection, opts) {
+    opts = opts || {};
+    var pushHistory = opts.pushHistory !== false;
+    var scrollBehavior = opts.initial ? "auto" : "smooth";
+
+    function finish(sub) {
+      setActiveSection(section);
+      setActiveChild(section, sub);
+      if (pushHistory) {
+        var path = buildPath(section, sub);
+        if (opts.replace) {
+          history.replaceState({ section: section, subsection: sub }, "", path);
+        } else {
+          history.pushState({ section: section, subsection: sub }, "", path);
+        }
+      }
+      currentSection = section;
+      currentSubsection = sub;
+      if (sub) scrollToSubsection(sub, scrollBehavior);
     }
+
+    if (section === currentSection && contentArea.dataset.loadedSection === section) {
+      finish(subsection || firstChildOf(section));
+      return;
+    }
+
+    loadContent(section).then(function () {
+      contentArea.dataset.loadedSection = section;
+      setupSubsectionObserver(section);
+      finish(subsection || firstChildOf(section));
+    });
   }
 
-  function sectionFromHash() {
-    var hash = window.location.hash.replace(/^#/, "");
-    // Extension point: child hashes look like "notes/thoughts".
-    // Only the top-level segment is used to activate a section for now.
-    var topLevel = hash.split("/")[0];
-    return topLevel || defaultSection;
-  }
-
-  buttons.forEach(function (btn) {
+  topButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
-      activate(btn.dataset.target);
+      navigateTo(btn.dataset.target, null, { pushHistory: true });
     });
   });
 
-  window.addEventListener("hashchange", function () {
-    activate(sectionFromHash(), false);
+  childButtons.forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var parts = btn.dataset.target.split("/");
+      navigateTo(parts[0], parts[1], { pushHistory: true });
+    });
   });
 
-  activate(sectionFromHash(), false);
+  window.addEventListener("popstate", function () {
+    var parsed = parsePath();
+    navigateTo(parsed.section, parsed.subsection, { pushHistory: false });
+  });
+
+  var initial = parsePath();
+  navigateTo(initial.section, initial.subsection, {
+    pushHistory: true,
+    replace: true,
+    initial: true
+  });
 });

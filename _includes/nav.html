@@ -2,26 +2,27 @@
     <ul class="nav-top">
         <li class="nav-section" data-section="about">
             <button class="nav-label" data-target="about">ABOUT</button>
+            <div class="nav-children-wrap">
+                <ul class="nav-children"></ul>
+            </div>
         </li>
-        <li class="nav-section" data-section="notes">
+        <li class="nav-section" data-section="notes" data-first-child="thoughts">
             <button class="nav-label" data-target="notes">NOTES</button>
             <div class="nav-children-wrap">
                 <ul class="nav-children">
-                    <!-- Extension point: these become links with data-target="notes/thoughts" etc.
-               once child-level hash routing is implemented. -->
-                    <li>thoughts</li>
-                    <li>essays</li>
-                    <li>inspiration</li>
+                    <li><button class="nav-child" data-target="notes/thoughts">thoughts</button></li>
+                    <li><button class="nav-child" data-target="notes/essays">essays</button></li>
+                    <li><button class="nav-child" data-target="notes/inspiration">inspiration</button></li>
                 </ul>
             </div>
         </li>
-        <li class="nav-section" data-section="projects">
+        <li class="nav-section" data-section="projects" data-first-child="builds">
             <button class="nav-label" data-target="projects">PROJECTS</button>
             <div class="nav-children-wrap">
                 <ul class="nav-children">
-                    <li>builds</li>
-                    <li>experiments</li>
-                    <li>archive</li>
+                    <li><button class="nav-child" data-target="projects/builds">builds</button></li>
+                    <li><button class="nav-child" data-target="projects/experiments">experiments</button></li>
+                    <li><button class="nav-child" data-target="projects/archive">archive</button></li>
                 </ul>
             </div>
         </li>
