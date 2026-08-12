@@ -44,7 +44,7 @@
     --text-body-size: 1rem;
     --text-meta-size: 0.8rem;
 
-    /* Navigation-Specific Tokens */
+    /* Navigation Typography Tokens */
     --font-nav-parent: var(--font-display);
     --text-nav-parent-size: 1rem;
     --weight-nav-parent: 400;
@@ -128,21 +128,25 @@ h2 {
 }
 
 /* Parent Navigation (ABOUT, NOTES, PROJECTS) */
+.site-nav .nav-label,
+button.nav-label,
 .nav-label {
-    font-family: var(--font-nav-parent);
-    font-size: var(--text-nav-parent-size);
-    font-weight: var(--weight-nav-parent);
-    letter-spacing: var(--tracking-nav-parent);
-    text-transform: uppercase;
+    font-family: var(--font-nav-parent) !important;
+    font-size: var(--text-nav-parent-size) !important;
+    font-weight: var(--weight-nav-parent) !important;
+    letter-spacing: var(--tracking-nav-parent) !important;
+    text-transform: uppercase !important;
 }
 
-/* Child Navigation (thoughts, essays, inspiration, etc.) */
+/* Child Navigation (thoughts, essays, inspiration, builds, etc.) */
+.site-nav .nav-child,
+button.nav-child,
 .nav-child {
-    font-family: var(--font-nav-child);
-    font-size: var(--text-nav-child-size);
-    font-weight: var(--weight-nav-child);
-    letter-spacing: var(--tracking-nav-child);
-    text-transform: lowercase;
+    font-family: var(--font-nav-child) !important;
+    font-size: var(--text-nav-child-size) !important;
+    font-weight: var(--weight-nav-child) !important;
+    letter-spacing: var(--tracking-nav-child) !important;
+    text-transform: lowercase !important;
 }
 
 .meta {
