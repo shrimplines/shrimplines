@@ -12,15 +12,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
   var currentSection = null;
   var currentSubsection = null;
-  var currentObserver = null;
   var sectionOrder = [];
-  var intersecting = {};
   var isProgrammaticScroll = false;
   var scrollLockTimer = null;
-  var bottomCheckScheduled = false;
+  var scrollComputeScheduled = false;
 
+  function firstChildOf(section) {
+    var el = document.querySelector('.nav-section[data-section="' + section + '"]');
+    return (el && el.dataset.firstChild) || null;
+  }
+
+  // A child segment appears in the URL only when the active child is NOT
+  // the section's first child. This lets "just opened" and "explicitly on
+  // the first child" both resolve to the plain parent URL, per the
+  // first-child URL allowance in the brief.
   function buildPath(section, subsection) {
-    return baseurl + "/" + section + (subsection ? "/" + subsection : "");
+    var first = firstChildOf(section);
+    var sub = (subsection && subsection !== first) ? subsection : null;
+    return baseurl + "/" + section + (sub ? "/" + sub : "");
   }
 
   function parsePath() {
@@ -51,13 +60,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function markCurrentSubsection(section, sub) {
-    if (sub === currentSubsection) return;
-    currentSubsection = sub;
-    setActiveChild(section, sub);
-    history.replaceState({ section: section, subsection: sub }, "", buildPath(section, sub));
-  }
-
   function loadContent(section) {
     return fetch(baseurl + "/content/" + section + ".html")
       .then(function (res) {
@@ -73,56 +75,57 @@ document.addEventListener("DOMContentLoaded", function () {
       });
   }
 
-  function setupSubsectionObserver(section) {
-    if (currentObserver) currentObserver.disconnect();
-    var els = contentArea.querySelectorAll(".content-section");
-    sectionOrder = Array.prototype.map.call(els, function (el) { return el.id; });
-    intersecting = {};
-    if (!els.length) return;
+  // Reading-position calculation: finds the section whose top has passed a
+  // fixed line 20% down the content pane. This replaces the previous
+  // IntersectionObserver/rootMargin approach, which required continual
+  // threshold tuning and still switched sections too early.
+  function computeActiveSubsection() {
+    if (!sectionOrder.length) return null;
+    var containerRect = contentArea.getBoundingClientRect();
+    var lineY = containerRect.top + containerRect.height * 0.2;
+    var active = sectionOrder[0];
 
-    currentObserver = new IntersectionObserver(function (entries) {
-      if (isProgrammaticScroll) return;
-
-      entries.forEach(function (entry) {
-        intersecting[entry.target.id] = entry.isIntersecting;
-      });
-
-      var active = null;
-      for (var i = 0; i < sectionOrder.length; i++) {
-        if (intersecting[sectionOrder[i]]) {
-          active = sectionOrder[i];
-          break;
-        }
+    for (var i = 0; i < sectionOrder.length; i++) {
+      var el = document.getElementById(sectionOrder[i]);
+      if (!el) continue;
+      var rect = el.getBoundingClientRect();
+      if (rect.top <= lineY) {
+        active = sectionOrder[i];
+      } else {
+        break;
       }
-
-      markCurrentSubsection(section, active);
-    }, {
-      root: contentArea,
-      // Reading-line approach: a thin (~1%) band positioned ~20% down the
-      // pane, rather than a wide zone. A section only becomes "active" once
-      // it actually reaches this reading position, and it holds that state
-      // until the next section's top crosses the same line — this is what
-      // prevents a sliver of the next section triggering a premature switch.
-      rootMargin: "-20% 0px -79% 0px",
-      threshold: 0
-    });
-
-    els.forEach(function (el) { currentObserver.observe(el); });
-
-    contentArea.removeEventListener("scroll", handleScrollBottomCheck);
-    contentArea.addEventListener("scroll", handleScrollBottomCheck, { passive: true });
+    }
+    return active;
   }
 
-  function handleScrollBottomCheck() {
-    if (isProgrammaticScroll || bottomCheckScheduled) return;
-    bottomCheckScheduled = true;
+  function updateSubsectionFromScroll(sub) {
+    if (!sub || sub === currentSubsection) return;
+    currentSubsection = sub;
+    setActiveChild(currentSection, sub);
+    history.replaceState({ section: currentSection, subsection: sub }, "", buildPath(currentSection, sub));
+  }
+
+  function handleScroll() {
+    if (isProgrammaticScroll || scrollComputeScheduled) return;
+    scrollComputeScheduled = true;
     window.requestAnimationFrame(function () {
-      bottomCheckScheduled = false;
+      scrollComputeScheduled = false;
+      if (!sectionOrder.length) return;
+
       var atBottom = contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 2;
-      if (!atBottom || !sectionOrder.length) return;
-      var last = sectionOrder[sectionOrder.length - 1];
-      markCurrentSubsection(currentSection, last);
+      var sub = atBottom ? sectionOrder[sectionOrder.length - 1] : computeActiveSubsection();
+      updateSubsectionFromScroll(sub);
     });
+  }
+
+  function setupScrollTracking(section) {
+    var els = contentArea.querySelectorAll(".content-section");
+    sectionOrder = Array.prototype.map.call(els, function (el) { return el.id; });
+
+    contentArea.removeEventListener("scroll", handleScroll);
+    if (sectionOrder.length) {
+      contentArea.addEventListener("scroll", handleScroll, { passive: true });
+    }
   }
 
   function scrollToSubsection(id, behavior) {
@@ -145,26 +148,34 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 600);
   }
 
+  // subsection is non-null only for an explicit child click, or a URL that
+  // names a child directly. Opening a parent (subsection === null) always
+  // defaults the highlighted child to the section's first child.
   function navigateTo(section, subsection, opts) {
     opts = opts || {};
     var pushHistory = opts.pushHistory !== false;
     var scrollBehavior = opts.initial ? "auto" : "smooth";
+    var explicitChild = !!subsection;
 
     function finish() {
+      var activeChild = subsection || firstChildOf(section);
+
       setActiveSection(section);
-      setActiveChild(section, subsection);
+      setActiveChild(section, activeChild);
+
       if (pushHistory) {
-        var path = buildPath(section, subsection);
+        var path = buildPath(section, activeChild);
         if (opts.replace) {
-          history.replaceState({ section: section, subsection: subsection }, "", path);
+          history.replaceState({ section: section, subsection: activeChild }, "", path);
         } else {
-          history.pushState({ section: section, subsection: subsection }, "", path);
+          history.pushState({ section: section, subsection: activeChild }, "", path);
         }
       }
-      currentSection = section;
-      currentSubsection = subsection;
 
-      if (subsection) {
+      currentSection = section;
+      currentSubsection = activeChild;
+
+      if (explicitChild) {
         scrollToSubsection(subsection, scrollBehavior);
       } else {
         scrollToTop(scrollBehavior);
@@ -178,7 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     loadContent(section).then(function () {
       contentArea.dataset.loadedSection = section;
-      setupSubsectionObserver(section);
+      setupScrollTracking(section);
       finish();
     });
   }
