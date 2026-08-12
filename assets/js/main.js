@@ -13,14 +13,11 @@ document.addEventListener("DOMContentLoaded", function () {
   var currentSection = null;
   var currentSubsection = null;
   var currentObserver = null;
+  var sectionOrder = [];
+  var intersecting = {};
   var isProgrammaticScroll = false;
   var scrollLockTimer = null;
   var bottomCheckScheduled = false;
-
-  function firstChildOf(section) {
-    var el = document.querySelector('.nav-section[data-section="' + section + '"]');
-    return (el && el.dataset.firstChild) || null;
-  }
 
   function buildPath(section, subsection) {
     return baseurl + "/" + section + (subsection ? "/" + subsection : "");
@@ -54,6 +51,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  // Updates child state (possibly to null) and reflects it in the URL.
+  // Used by both passive scroll tracking and the bottom-of-pane safeguard.
   function markCurrentSubsection(section, sub) {
     if (sub === currentSubsection) return;
     currentSubsection = sub;
@@ -79,29 +78,37 @@ document.addEventListener("DOMContentLoaded", function () {
   function setupSubsectionObserver(section) {
     if (currentObserver) currentObserver.disconnect();
     var els = contentArea.querySelectorAll(".content-section");
+    sectionOrder = Array.prototype.map.call(els, function (el) { return el.id; });
+    intersecting = {};
     if (!els.length) return;
 
     currentObserver = new IntersectionObserver(function (entries) {
       if (isProgrammaticScroll) return;
+
       entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        markCurrentSubsection(section, entry.target.id);
+        intersecting[entry.target.id] = entry.isIntersecting;
       });
+
+      // Active subsection is the first one (in document order) currently
+      // inside the detection band. If none are, no child is active yet —
+      // this covers both "above the first child" and "below the last".
+      var active = null;
+      for (var i = 0; i < sectionOrder.length; i++) {
+        if (intersecting[sectionOrder[i]]) {
+          active = sectionOrder[i];
+          break;
+        }
+      }
+
+      markCurrentSubsection(section, active);
     }, {
       root: contentArea,
-      // Detection band: top 10%-45% of the content pane. Widened from the
-      // previous -70% bottom margin, which left too little scrollable
-      // distance for short/last sections (e.g. inspiration) to ever enter
-      // the band before hitting the scroll ceiling.
       rootMargin: "-10% 0px -55% 0px",
       threshold: 0
     });
 
     els.forEach(function (el) { currentObserver.observe(el); });
 
-    // Safeguard for the structural edge case IntersectionObserver can't
-    // resolve on its own: once scrolled to the bottom of the pane, force
-    // the last section active even if it never crossed the band above.
     contentArea.removeEventListener("scroll", handleScrollBottomCheck);
     contentArea.addEventListener("scroll", handleScrollBottomCheck, { passive: true });
   }
@@ -112,11 +119,9 @@ document.addEventListener("DOMContentLoaded", function () {
     window.requestAnimationFrame(function () {
       bottomCheckScheduled = false;
       var atBottom = contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 2;
-      if (!atBottom) return;
-      var els = contentArea.querySelectorAll(".content-section");
-      if (!els.length) return;
-      var last = els[els.length - 1];
-      markCurrentSubsection(currentSection, last.id);
+      if (!atBottom || !sectionOrder.length) return;
+      var last = sectionOrder[sectionOrder.length - 1];
+      markCurrentSubsection(currentSection, last);
     });
   }
 
@@ -131,41 +136,60 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 600);
   }
 
+  function scrollToTop(behavior) {
+    isProgrammaticScroll = true;
+    contentArea.scrollTo({ top: 0, behavior: behavior });
+    window.clearTimeout(scrollLockTimer);
+    scrollLockTimer = window.setTimeout(function () {
+      isProgrammaticScroll = false;
+    }, 600);
+  }
+
+  // subsection is either an explicit child target or null — a parent click
+  // (or a URL with no child segment) always means "go to the beginning of
+  // this section," never "go to its first child."
   function navigateTo(section, subsection, opts) {
     opts = opts || {};
     var pushHistory = opts.pushHistory !== false;
     var scrollBehavior = opts.initial ? "auto" : "smooth";
 
-    function finish(sub) {
+    function finish() {
       setActiveSection(section);
-      setActiveChild(section, sub);
+      setActiveChild(section, subsection);
       if (pushHistory) {
-        var path = buildPath(section, sub);
+        var path = buildPath(section, subsection);
         if (opts.replace) {
-          history.replaceState({ section: section, subsection: sub }, "", path);
+          history.replaceState({ section: section, subsection: subsection }, "", path);
         } else {
-          history.pushState({ section: section, subsection: sub }, "", path);
+          history.pushState({ section: section, subsection: subsection }, "", path);
         }
       }
       currentSection = section;
-      currentSubsection = sub;
-      if (sub) scrollToSubsection(sub, scrollBehavior);
+      currentSubsection = subsection;
+
+      if (subsection) {
+        scrollToSubsection(subsection, scrollBehavior);
+      } else {
+        scrollToTop(scrollBehavior);
+      }
     }
 
     if (section === currentSection && contentArea.dataset.loadedSection === section) {
-      finish(subsection || firstChildOf(section));
+      finish();
       return;
     }
 
     loadContent(section).then(function () {
       contentArea.dataset.loadedSection = section;
       setupSubsectionObserver(section);
-      finish(subsection || firstChildOf(section));
+      finish();
     });
   }
 
   topButtons.forEach(function (btn) {
     btn.addEventListener("click", function () {
+      // Explicit parent click: always go to the section's beginning,
+      // never infer a child.
       navigateTo(btn.dataset.target, null, { pushHistory: true });
     });
   });
