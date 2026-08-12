@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
   var currentObserver = null;
   var isProgrammaticScroll = false;
   var scrollLockTimer = null;
+  var bottomCheckScheduled = false;
 
   function firstChildOf(section) {
     var el = document.querySelector('.nav-section[data-section="' + section + '"]');
@@ -53,6 +54,13 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function markCurrentSubsection(section, sub) {
+    if (sub === currentSubsection) return;
+    currentSubsection = sub;
+    setActiveChild(section, sub);
+    history.replaceState({ section: section, subsection: sub }, "", buildPath(section, sub));
+  }
+
   function loadContent(section) {
     return fetch(baseurl + "/content/" + section + ".html")
       .then(function (res) {
@@ -77,21 +85,39 @@ document.addEventListener("DOMContentLoaded", function () {
       if (isProgrammaticScroll) return;
       entries.forEach(function (entry) {
         if (!entry.isIntersecting) return;
-        var sub = entry.target.id;
-        if (sub === currentSubsection) return;
-        currentSubsection = sub;
-        setActiveChild(section, sub);
-        history.replaceState({ section: section, subsection: sub }, "", buildPath(section, sub));
+        markCurrentSubsection(section, entry.target.id);
       });
     }, {
       root: contentArea,
-      // Treat a section as "current" once it's within the top ~30% of the
-      // viewport, so the URL updates a beat before it reaches the very top.
-      rootMargin: "-10% 0px -70% 0px",
+      // Detection band: top 10%-45% of the content pane. Widened from the
+      // previous -70% bottom margin, which left too little scrollable
+      // distance for short/last sections (e.g. inspiration) to ever enter
+      // the band before hitting the scroll ceiling.
+      rootMargin: "-10% 0px -55% 0px",
       threshold: 0
     });
 
     els.forEach(function (el) { currentObserver.observe(el); });
+
+    // Safeguard for the structural edge case IntersectionObserver can't
+    // resolve on its own: once scrolled to the bottom of the pane, force
+    // the last section active even if it never crossed the band above.
+    contentArea.removeEventListener("scroll", handleScrollBottomCheck);
+    contentArea.addEventListener("scroll", handleScrollBottomCheck, { passive: true });
+  }
+
+  function handleScrollBottomCheck() {
+    if (isProgrammaticScroll || bottomCheckScheduled) return;
+    bottomCheckScheduled = true;
+    window.requestAnimationFrame(function () {
+      bottomCheckScheduled = false;
+      var atBottom = contentArea.scrollTop + contentArea.clientHeight >= contentArea.scrollHeight - 2;
+      if (!atBottom) return;
+      var els = contentArea.querySelectorAll(".content-section");
+      if (!els.length) return;
+      var last = els[els.length - 1];
+      markCurrentSubsection(currentSection, last.id);
+    });
   }
 
   function scrollToSubsection(id, behavior) {
