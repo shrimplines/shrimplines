@@ -1,118 +1,25 @@
 :root {
-    --nav-edge-space: 3rem;
-    --nav-section-gap: 2.5rem;
-    --nav-child-indent: 1.25rem;
-    --nav-child-gap: 0.5rem;
-    --nav-pull-up: 1.25rem;
-    --nav-transition: 0.2s ease;
+    /* ============================================
+       SHRIMPLINES COLOR SYSTEM TOKENS
+       ============================================ */
+    /* Descriptive Tokens */
+    --bg-canvas: #f0f4f7;
+    --text-main: #363028;
+    --text-muted: #8a97a8;
+    --accent-shark: #306880;
+    --accent-mouth: #f8d8ca;
 
-    --page-y-space: 1rem;
-    --page-y-padding: calc(var(--page-y-space) * 1.75);
-    --content-section-gap: calc(var(--page-y-padding) * 4);
-}
+    /* Semantic Tokens */
+    --color-background: var(--bg-canvas);
+    --color-text: var(--text-main);
+    --color-muted: var(--text-muted);
+    --color-accent: var(--accent-shark);
+    --color-highlight: var(--accent-mouth);
+    --color-border: var(--color-muted);
 
-* {
-    box-sizing: border-box;
-}
-
-html,
-body {
-    margin: 0;
-    height: 100%;
-    font-family: sans-serif;
-}
-
-.site-shell {
-    display: grid;
-    grid-template-columns: 220px 1fr;
-    height: 100vh;
-    overflow: hidden;
-}
-
-.site-nav {
-    border-right: 1px solid #ccc;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: var(--page-y-padding) var(--nav-edge-space);
-    overflow: hidden;
-}
-
-.nav-top {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--nav-section-gap);
-}
-
-.nav-section {
-    transition: margin-top var(--nav-transition);
-}
-
-.nav-section.active {
-    margin-top: calc(-1 * var(--nav-pull-up));
-}
-
-.nav-label {
-    background: none;
-    border: none;
-    font: inherit;
-    cursor: pointer;
-    padding: 0;
-}
-
-.nav-children-wrap {
-    display: grid;
-    grid-template-rows: minmax(0, 0fr);
-    transition: grid-template-rows var(--nav-transition);
-}
-
-.nav-section.active .nav-children-wrap {
-    grid-template-rows: minmax(0, 1fr);
-}
-
-.nav-children {
-    overflow: hidden;
-    list-style: none;
-    margin: 0.5rem 0 0;
-    padding: 0 0 0 var(--nav-child-indent);
-    display: flex;
-    flex-direction: column;
-    gap: var(--nav-child-gap);
-}
-
-.nav-child {
-    background: none;
-    border: none;
-    font: inherit;
-    cursor: pointer;
-    padding: 0;
-    display: block;
-    text-align: left;
-}
-
-.nav-child.active {
-    text-decoration: underline;
-}
-
-.content-area {
-    height: 100%;
-    overflow-y: auto;
-    scroll-behavior: smooth;
-    padding: var(--page-y-padding) 1.5rem;
-}
-
-.content-section {
-    min-height: 60vh;
-    margin-bottom: var(--content-section-gap);
-    scroll-margin-top: var(--page-y-padding);
-}
-
-.content-section:last-child {
-    margin-bottom: 0;
-}:root {
+    /* ============================================
+       NAVIGATION GEOMETRY TOKENS (FROZEN)
+       ============================================ */
     --nav-edge-space: 3rem;
     --nav-section-gap: 2.5rem;
     --nav-child-indent: 1.25rem;
@@ -129,11 +36,18 @@ body {
     box-sizing: border-box;
 }
 
+::selection {
+    background-color: var(--color-highlight);
+    color: var(--color-text);
+}
+
 html,
 body {
     margin: 0;
     height: 100%;
     font-family: sans-serif;
+    background-color: var(--color-background);
+    color: var(--color-text);
 }
 
 .site-shell {
@@ -144,7 +58,7 @@ body {
 }
 
 .site-nav {
-    border-right: 1px solid #ccc;
+    border-right: 1px solid var(--color-border);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -175,6 +89,15 @@ body {
     font: inherit;
     cursor: pointer;
     padding: 0;
+    color: var(--color-text);
+}
+
+.nav-label:hover {
+    color: var(--color-accent);
+}
+
+.nav-section.active>.nav-label {
+    color: var(--color-accent);
 }
 
 .nav-children-wrap {
@@ -205,9 +128,15 @@ body {
     padding: 0;
     display: block;
     text-align: left;
+    color: var(--color-muted);
+}
+
+.nav-child:hover {
+    color: var(--color-text);
 }
 
 .nav-child.active {
+    color: var(--color-accent);
     text-decoration: underline;
 }
 
