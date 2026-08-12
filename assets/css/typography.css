@@ -6,7 +6,8 @@
 /* Handjet Variable Font */
 @font-face {
     font-family: 'Handjet';
-    src: url('../fonts/Handjet/Handjet-VariableFont_ELGR,ELSH,wght.ttf') format('truetype');
+    src: url('../fonts/Handjet/Handjet-VariableFont_ELGR,ELSH,wght.ttf') format('truetype-variations'),
+        url('../fonts/Handjet/Handjet-VariableFont_ELGR,ELSH,wght.ttf') format('truetype');
     font-weight: 100 900;
     font-display: swap;
 }
@@ -14,15 +15,17 @@
 /* Geist Sans Variable Font */
 @font-face {
     font-family: 'Geist Sans';
-    src: url('../fonts/Geist/Geist-VariableFont_wght.ttf') format('truetype');
+    src: url('../fonts/Geist/Geist-VariableFont_wght.ttf') format('truetype-variations'),
+        url('../fonts/Geist/Geist-VariableFont_wght.ttf') format('truetype');
     font-weight: 100 900;
     font-display: swap;
 }
 
-/* Optional: Geist Pixel Variable Font (if needed for secondary headings) */
+/* Optional: Geist Pixel Variable Font (Dormant for now) */
 @font-face {
     font-family: 'Geist Pixel';
-    src: url('../fonts/Geist_Pixel/GeistPixel-Regular-VariableFont_ELSH.ttf') format('truetype');
+    src: url('../fonts/Geist_Pixel/GeistPixel-Regular-VariableFont_ELSH.ttf') format('truetype-variations'),
+        url('../fonts/Geist_Pixel/GeistPixel-Regular-VariableFont_ELSH.ttf') format('truetype');
     font-weight: 100 900;
     font-display: swap;
 }
