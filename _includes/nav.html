@@ -5,14 +5,25 @@
         </li>
         <li class="nav-section" data-section="notes">
             <button class="nav-label" data-target="notes">NOTES</button>
-            <ul class="nav-children">
-                <li><a href="#">item</a></li>
-                <li><a href="#">item</a></li>
-                <li><a href="#">item</a></li>
-            </ul>
+            <div class="nav-children-wrap">
+                <ul class="nav-children">
+                    <!-- Extension point: these become links with data-target="notes/thoughts" etc.
+               once child-level hash routing is implemented. -->
+                    <li>thoughts</li>
+                    <li>essays</li>
+                    <li>inspiration</li>
+                </ul>
+            </div>
         </li>
         <li class="nav-section" data-section="projects">
             <button class="nav-label" data-target="projects">PROJECTS</button>
+            <div class="nav-children-wrap">
+                <ul class="nav-children">
+                    <li>builds</li>
+                    <li>experiments</li>
+                    <li>archive</li>
+                </ul>
+            </div>
         </li>
     </ul>
 </nav>
