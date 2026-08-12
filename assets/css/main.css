@@ -137,7 +137,7 @@ body {
 
 .nav-child.active {
     color: var(--color-accent);
-    text-decoration: underline;
+    text-decoration: none; /* active underline */
 }
 
 .content-area {
