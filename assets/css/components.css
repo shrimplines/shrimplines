@@ -1,0 +1,27 @@
+/* ============================================
+   SHRIMPLINES — MARKER SELECTION CANVAS
+   ============================================ */
+
+/* Wrapper container inside content-area */
+.text-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+/* Overlay canvas mapped to wrapper geometry */
+.highlight-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* Allows text selection underneath */
+    z-index: 10;
+}
+
+/* Hide default browser text selection highlight to avoid visual clash */
+.text-wrapper ::selection {
+    background: transparent;
+    color: inherit;
+}

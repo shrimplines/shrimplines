@@ -15,10 +15,24 @@
 <body data-baseurl="{{ site.baseurl }}">
     <div class="site-shell">
         {% include nav.html %}
+
         <main class="content-area" id="content-area">
-            {{ content }}
+            <div class="text-wrapper">
+                <canvas class="highlight-canvas"></canvas>
+
+                {% if content %}
+                {{ content }}
+                {% else %}
+                <section class="content-section">
+                    <h1>Shrimplines</h1>
+                    <p>Select text here to see the marker highlight...</p>
+                </section>
+                {% endif %}
+            </div>
         </main>
     </div>
+
+    <script src="{{ '/assets/js/highlight.js' | relative_url }}"></script>
     <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
 </body>
 
