@@ -45,7 +45,7 @@
     --text-meta-size: 0.8rem;
 
     /* Navigation Typography Tokens */
-    --font-nav-parent: var(--font-display);
+    --font-nav-parent: var(--font-secondary);
     --text-nav-parent-size: 1rem;
     --weight-nav-parent: 400;
     --tracking-nav-parent: 0.05em;
