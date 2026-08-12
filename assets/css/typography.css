@@ -53,6 +53,7 @@
     --leading-meta: 1.4;
 
     /* Weights */
+    --weight-display: 400;
     --weight-chapter: 500;
     --weight-body: 400;
     --weight-nav-parent: 500;
@@ -85,6 +86,8 @@ h1 {
     font-size: var(--text-parent-size);
     line-height: var(--leading-display);
     letter-spacing: var(--tracking-parent);
+    font-weight: var(--weight-display);
+    /* Kills default browser bolding */
     margin: 0 0 1rem 0;
 }
 
@@ -106,6 +109,7 @@ h2 {
     font-size: var(--text-parent-size);
     line-height: var(--leading-display);
     letter-spacing: var(--tracking-parent);
+    font-weight: var(--weight-display);
     margin: 0 0 1rem 0;
 }
 
