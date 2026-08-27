@@ -68,6 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
       })
       .then(function (html) {
         contentArea.innerHTML = html;
+        document.dispatchEvent(new CustomEvent("shrimplines:content-loaded", { detail: { section: section } }));
       })
       .catch(function (err) {
         contentArea.innerHTML = "<p>Could not load content.</p>";
