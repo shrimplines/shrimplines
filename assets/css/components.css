@@ -27,21 +27,43 @@
 }
 
 /* ============================================
+   SHRIMPLINES — SHELL STACKING CONTEXT
+   ============================================
+   .site-shell has no rule anywhere in the provided stylesheets
+   (main.css / layout.css / components.css / typography.css), so its
+   own display/position and any z-index the sidebar (.site-nav) or
+   content (.content-area) may already carry are not visible here.
+   `isolation: isolate` forces .site-shell to form its own clean
+   stacking context regardless of that unseen CSS, so z-index
+   comparisons between its direct children (nav, divider canvas, main)
+   are always resolved locally rather than depending on ancestors or
+   page-level ordering this stylesheet can't see. This has NO effect
+   on layout, flex/grid geometry, sizing, or scrolling — isolation
+   only affects how stacking is grouped. */
+.site-shell {
+    isolation: isolate;
+}
+
+/* ============================================
    SHRIMPLINES — DIVIDER CANVAS OVERLAY
    ============================================
    The interactive guitar-string divider (assets/js/divider.js) sets
    canvas.style.left / .width / .height inline, computed relative to
    .site-shell — but no rule for .divider-canvas existed anywhere in
    the provided stylesheets, so the canvas had no position/stacking
-   behavior of its own. This adds only that: position + a z-index high
+   behavior of its own. This adds that: position + a z-index high
    enough to paint above both the sidebar (.site-nav) and the content
    area (.content-area) for the canvas's full height, matching the
-   .highlight-canvas overlay pattern above. Assumes .site-shell already
-   establishes the positioning context divider.js's left-offset math
-   depends on (shell geometry is intentionally left untouched here). */
+   .highlight-canvas overlay pattern above. Combined with the
+   .site-shell isolation above, this z-index is now compared only
+   against its direct siblings (nav, main) inside that local stacking
+   context, rather than against anything higher up the page. Assumes
+   .site-shell already establishes the positioning context
+   divider.js's left-offset math depends on (shell geometry is
+   intentionally left untouched here). */
 .divider-canvas {
     position: absolute;
     top: 0;
-    z-index: 50;
+    z-index: 100;
     pointer-events: auto;
 }
