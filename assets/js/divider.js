@@ -58,7 +58,7 @@
 (function () {
     var POINT_COUNT = 18;        // points along the chain — more = smoother curve
     var STIFFNESS = 0.55;        // neighbor coupling strength — taut string, not a loose chain
-    var DAMPING = 0.9;           // velocity damping per frame — tuned in-browser, kept as-is
+    var DAMPING = 0.85;           // velocity damping per frame — tuned in-browser, kept as-is
     var MAX_PULL = 46;           // px clamp so a wild drag can't stretch indefinitely
     var SETTLE_EPSILON = 0.05;   // below this displacement+velocity, treat as fully at rest
     var LINE_WIDTH = 1;          // matches the original 1px CSS border
