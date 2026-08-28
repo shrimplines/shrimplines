@@ -25,3 +25,23 @@
     background: transparent;
     color: inherit;
 }
+
+/* ============================================
+   SHRIMPLINES — DIVIDER CANVAS OVERLAY
+   ============================================
+   The interactive guitar-string divider (assets/js/divider.js) sets
+   canvas.style.left / .width / .height inline, computed relative to
+   .site-shell — but no rule for .divider-canvas existed anywhere in
+   the provided stylesheets, so the canvas had no position/stacking
+   behavior of its own. This adds only that: position + a z-index high
+   enough to paint above both the sidebar (.site-nav) and the content
+   area (.content-area) for the canvas's full height, matching the
+   .highlight-canvas overlay pattern above. Assumes .site-shell already
+   establishes the positioning context divider.js's left-offset math
+   depends on (shell geometry is intentionally left untouched here). */
+.divider-canvas {
+    position: absolute;
+    top: 0;
+    z-index: 50;
+    pointer-events: auto;
+}
