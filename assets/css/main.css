@@ -66,6 +66,8 @@ body {
     overflow: hidden;
     max-width: var(--shell-max-width);
     margin: 0 auto;
+    position: relative;
+    /* anchors .divider-canvas; does not affect grid layout */
 }
 
 .site-nav {
@@ -165,7 +167,12 @@ body {
     height: 100%;
     overflow-y: auto;
     scroll-behavior: smooth;
-    padding: var(--page-y-padding) 1.5rem var(--page-y-padding) var(--nav-edge-space);
+    /* Top and left inset increased 1.5x for balanced top-left breathing
+       room; right/bottom left at the original page-y-padding. Scoped to
+       this rule only — the shared --page-y-padding/--nav-edge-space
+       tokens themselves are untouched, so nav padding and
+       --content-section-gap are unaffected. */
+    padding: calc(var(--page-y-padding) * 1.5) 1.5rem var(--page-y-padding) calc(var(--nav-edge-space) * 1.5);
 }
 
 .content-section {
@@ -176,4 +183,19 @@ body {
 
 .content-section:last-child {
     margin-bottom: 0;
+}
+
+/* ============================================
+   ELASTIC DIVIDER OVERLAY
+   ============================================ */
+/* A narrow absolutely-positioned canvas layered over the sidebar/content
+   boundary (see assets/js/divider.js). Sized and positioned by JS to
+   track the actual divider location. Purely visual — removed from grid
+   flow, so it cannot affect .site-shell's column widths. */
+.divider-canvas {
+    position: absolute;
+    top: 0;
+    z-index: 5;
+    cursor: ew-resize;
+    touch-action: none;
 }

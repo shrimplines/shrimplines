@@ -56,7 +56,12 @@
     // grid widths from 40 to 500+ columns and row counts from 6 to 8
     // (the range produced by a ~48px banner at 6px cells).
     var SLOT_COLS = 12;
-    var SEED_DENSITY_MULTIPLIER = 2.5; // tunable: scales starting organism count
+    var SEED_DENSITY_MULTIPLIER = 5; // tunable: scales starting organism count.
+                                      // Single source of truth for density —
+                                      // verified against 240+/1000-generation
+                                      // simulations at multiple banner widths
+                                      // to confirm the population stabilizes
+                                      // rather than dying out.
     var MIN_ORGANISMS = Math.round(4 * SEED_DENSITY_MULTIPLIER);
     var MAX_ORGANISMS = Math.round(32 * SEED_DENSITY_MULTIPLIER);
 

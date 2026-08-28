@@ -16,6 +16,8 @@
     <div class="site-shell">
         {% include nav.html %}
 
+        <canvas class="divider-canvas" id="divider-canvas" aria-hidden="true"></canvas>
+
         <main class="content-area" id="content-area">
             <div class="text-wrapper">
                 <canvas class="highlight-canvas"></canvas>
@@ -36,6 +38,7 @@
     <script src="{{ '/assets/js/main.js' | relative_url }}"></script>
     <script src="{{ '/assets/js/game-of-life.js' | relative_url }}"></script>
     <script src="{{ '/assets/js/about-page.js' | relative_url }}"></script>
+    <script src="{{ '/assets/js/divider.js' | relative_url }}"></script>
 </body>
 
 </html>
