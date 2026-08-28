@@ -36,10 +36,29 @@
 // produces the localized, tapering deformation (strong at the grab
 // point, fading toward the anchored ends) instead of a broad
 // translated curve.
+//
+// IMPORTANT — simultaneous (snapshot) update, not in-place mutation:
+// every point's new dx/vx is computed from a snapshot of the PREVIOUS
+// frame's displacements, then swapped in all at once. Updating
+// points[i].dx in place while looping (so point i+1 reads point i's
+// brand-new value instead of last frame's) turns this into a lopsided,
+// non-physical recurrence that can quietly drift and blow up over a
+// long-enough hold — verified numerically before this rewrite, and
+// fixed by always reading from `prevDx`, never from a partially-
+// updated points[] mid-loop.
+//
+// STIFFNESS/DAMPING: DAMPING is intentionally left at 0.8 (tuned
+// in-browser). STIFFNESS is set well past the point where the
+// slowest-decaying mode of the chain stops being a plain fade and
+// starts genuinely overshooting past center before settling — that's
+// what produces the guitar-string "swings back the other way, then
+// decays" feel rather than a loose, floppy relaxation. Confirmed by
+// direct simulation of this exact recurrence: bounded, reaches a
+// visible reversal, and always returns to exactly 0.
 (function () {
     var POINT_COUNT = 18;        // points along the chain — more = smoother curve
-    var STIFFNESS = 0.15;        // neighbor coupling strength (discrete wave equation)
-    var DAMPING = 0.87;          // velocity damping per frame — produces the settle wobble
+    var STIFFNESS = 0.55;        // neighbor coupling strength — taut string, not a loose chain
+    var DAMPING = 0.8;           // velocity damping per frame — tuned in-browser, kept as-is
     var MAX_PULL = 46;           // px clamp so a wild drag can't stretch indefinitely
     var SETTLE_EPSILON = 0.05;   // below this displacement+velocity, treat as fully at rest
     var LINE_WIDTH = 1;          // matches the original 1px CSS border
@@ -162,6 +181,12 @@
         var n = points.length;
         if (n < 3) return true;
 
+        // Snapshot every point's displacement from THIS frame's start
+        // so every point's force is computed from the same "before"
+        // state — see the simultaneous-update note above.
+        var prevDx = new Array(n);
+        for (var s = 0; s < n; s++) prevDx[s] = points[s].dx;
+
         var settled = true;
 
         for (var i = 1; i < n - 1; i++) {
@@ -169,18 +194,18 @@
 
             if (state.dragging && i === state.grabIndex) {
                 var newDx = state.pendingDx;
-                p.vx = newDx - p.dx;
+                p.vx = newDx - prevDx[i];
                 p.dx = newDx;
                 settled = false;
                 continue;
             }
 
-            var left = points[i - 1].dx;
-            var right = points[i + 1].dx;
-            var force = STIFFNESS * (left + right - 2 * p.dx);
+            var left = prevDx[i - 1];
+            var right = prevDx[i + 1];
+            var force = STIFFNESS * (left + right - 2 * prevDx[i]);
 
             p.vx = (p.vx + force) * DAMPING;
-            p.dx += p.vx;
+            p.dx = prevDx[i] + p.vx;
 
             if (Math.abs(p.dx) > SETTLE_EPSILON || Math.abs(p.vx) > SETTLE_EPSILON) {
                 settled = false;
