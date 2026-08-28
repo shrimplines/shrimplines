@@ -5,7 +5,7 @@
 // divider. Purely visual: it never touches the CSS grid, sidebar
 // width, or content layout — it only takes over rendering of the
 // divider LINE itself, via an absolutely-positioned canvas that sits
-// on top of it (see .divider-canvas in main.css).
+// on top of it (see .divider-canvas in components.css).
 //
 // Isolated on purpose: its own IIFE, its own canvas/id
 // (#divider-canvas, distinct from #gol-canvas), no shared state with
@@ -13,30 +13,48 @@
 //
 // Progressive enhancement: if the expected elements aren't present or
 // canvas isn't supported, init() bails out before touching anything,
-// and the plain CSS border-right (see main.css / nav styling) remains
-// the divider exactly as before.
-
+// and the plain CSS border-right (see nav styling) remains the
+// divider exactly as before.
+//
+// PHYSICS MODEL (guitar-string pluck):
+// The divider is a chain of points with fixed y and a horizontal
+// displacement `dx` + velocity `vx`. The two endpoints are hard-
+// anchored at dx=0 forever — they are never touched by the physics
+// step, so the chain's only possible resting state is perfectly
+// straight.
+//
+// Only the single point nearest the pointer is "grabbed": while
+// dragging, that one point's dx is driven directly to the pointer's
+// horizontal offset (a kinematic constraint), and its velocity is
+// derived from its own frame-to-frame movement. Every other point —
+// including the grabbed one once released — is governed purely by a
+// discrete wave equation: each point is pulled only toward the
+// AVERAGE of its two immediate neighbors, then damped. A point can
+// therefore only be disturbed by a neighbor that has already moved,
+// so a pluck has to propagate outward step by step from the grab
+// point rather than being applied everywhere at once. This is what
+// produces the localized, tapering deformation (strong at the grab
+// point, fading toward the anchored ends) instead of a broad
+// translated curve.
 (function () {
-    var POINT_COUNT = 18;           // points along the chain — more = smoother curve
-    var STIFFNESS = 0.18;           // pull toward the current target displacement
-    var NEIGHBOR_STIFFNESS = 0.12;  // pull toward neighboring points (curve smoothing)
-    var DAMPING = 0.88;             // velocity damping per frame — produces the settle wobble
-    var GRAB_SIGMA = 60;            // px falloff radius: how far the pull reaches along the line
-    var MAX_PULL = 46;              // px clamp so a wild drag can't stretch indefinitely
-    var SETTLE_EPSILON = 0.05;      // below this displacement+velocity, treat as fully at rest
-    var LINE_WIDTH = 1;             // matches the original 1px CSS border
-    var HIT_WIDTH = 20;             // canvas width in CSS px, centered on the divider
+    var POINT_COUNT = 18;        // points along the chain — more = smoother curve
+    var STIFFNESS = 0.15;        // neighbor coupling strength (discrete wave equation)
+    var DAMPING = 0.90;          // velocity damping per frame — produces the settle wobble
+    var MAX_PULL = 46;           // px clamp so a wild drag can't stretch indefinitely
+    var SETTLE_EPSILON = 0.05;   // below this displacement+velocity, treat as fully at rest
+    var LINE_WIDTH = 1;          // matches the original 1px CSS border
+    var HIT_WIDTH = 20;          // canvas width in CSS px, centered on the divider
 
     var state = {
         canvas: null,
         ctx: null,
         shell: null,
         nav: null,
-        points: null,      // [{y, dx, vx, targetDx}]
+        points: null,      // [{y, dx, vx}] — index 0 and length-1 are anchored endpoints
         height: 0,
         dragging: false,
-        grabY: 0,
-        grabDx: 0,
+        grabIndex: -1,     // index of the currently/most-recently grabbed point
+        pendingDx: 0,       // pointer's current (clamped) horizontal offset while dragging
         rafId: null,
         color: '#8a97a8'   // fallback; overwritten from the site's color token
     };
@@ -54,8 +72,7 @@
             points.push({
                 y: (height * i) / (count - 1),
                 dx: 0,
-                vx: 0,
-                targetDx: 0
+                vx: 0
             });
         }
         return points;
@@ -120,39 +137,47 @@
         ctx.stroke();
     }
 
-    function falloff(distance) {
-        return Math.exp(-(distance * distance) / (2 * GRAB_SIGMA * GRAB_SIGMA));
-    }
-
-    function applyDragTargets() {
+    // Finds the point nearest a given y (in canvas-local coordinates)
+    // and clamps away from the two anchored endpoints, so a grab near
+    // the very top/bottom edge still lands on a point that's actually
+    // free to move.
+    function computeGrabIndex(grabY) {
         var points = state.points;
-        for (var i = 0; i < points.length; i++) {
-            points[i].targetDx = state.grabDx * falloff(points[i].y - state.grabY);
-        }
+        var count = points.length;
+        if (count < 3) return -1;
+        var t = state.height > 0 ? grabY / state.height : 0;
+        var idx = Math.round(t * (count - 1));
+        return Math.max(1, Math.min(count - 2, idx));
     }
 
-    function releaseTargets() {
-        var points = state.points;
-        for (var i = 0; i < points.length; i++) {
-            points[i].targetDx = 0;
-        }
-    }
-
-    // One damped spring-chain step. Each point is pulled toward its own
-    // target (0 at rest, pointer-influenced while dragging) and toward
-    // its neighbors (so the curve stays smooth rather than kinking).
-    // Returns true once every point's displacement and velocity have
-    // decayed below SETTLE_EPSILON.
+    // One discrete-wave-equation step. The grabbed point (while
+    // dragging) is kinematically driven to the pointer; every other
+    // interior point is pulled only toward the average of its two
+    // immediate neighbors, then damped. Endpoints are never touched —
+    // they stay anchored at 0, which is the chain's only equilibrium.
+    // Returns true once every free point's displacement and velocity
+    // have decayed below SETTLE_EPSILON.
     function physicsStep() {
         var points = state.points;
+        var n = points.length;
+        if (n < 3) return true;
+
         var settled = true;
 
-        for (var i = 0; i < points.length; i++) {
+        for (var i = 1; i < n - 1; i++) {
             var p = points[i];
-            var force = (p.targetDx - p.dx) * STIFFNESS;
 
-            if (i > 0) force += (points[i - 1].dx - p.dx) * NEIGHBOR_STIFFNESS;
-            if (i < points.length - 1) force += (points[i + 1].dx - p.dx) * NEIGHBOR_STIFFNESS;
+            if (state.dragging && i === state.grabIndex) {
+                var newDx = state.pendingDx;
+                p.vx = newDx - p.dx;
+                p.dx = newDx;
+                settled = false;
+                continue;
+            }
+
+            var left = points[i - 1].dx;
+            var right = points[i + 1].dx;
+            var force = STIFFNESS * (left + right - 2 * p.dx);
 
             p.vx = (p.vx + force) * DAMPING;
             p.dx += p.vx;
@@ -190,12 +215,18 @@
 
     function pointerDown(evt) {
         if (!state.points) return;
+        var rect = state.canvas.getBoundingClientRect();
+        var grabY = evt.clientY - rect.top;
+
+        state.grabIndex = computeGrabIndex(grabY);
+        if (state.grabIndex < 0) return;
+
         state.dragging = true;
         try { state.canvas.setPointerCapture(evt.pointerId); } catch (e) {}
-        var rect = state.canvas.getBoundingClientRect();
-        state.grabY = evt.clientY - rect.top;
-        state.grabDx = evt.clientX - rect.left - HIT_WIDTH / 2;
-        applyDragTargets();
+
+        var raw = evt.clientX - rect.left - HIT_WIDTH / 2;
+        state.pendingDx = Math.max(-MAX_PULL, Math.min(MAX_PULL, raw));
+
         ensureLoop();
         evt.preventDefault();
     }
@@ -203,17 +234,23 @@
     function pointerMove(evt) {
         if (!state.dragging) return;
         var rect = state.canvas.getBoundingClientRect();
-        state.grabY = evt.clientY - rect.top;
         var raw = evt.clientX - rect.left - HIT_WIDTH / 2;
-        state.grabDx = Math.max(-MAX_PULL, Math.min(MAX_PULL, raw));
-        applyDragTargets();
+        state.pendingDx = Math.max(-MAX_PULL, Math.min(MAX_PULL, raw));
+        // Note: the grab index is intentionally NOT re-picked on move —
+        // you keep hold of the same point on the string as you pull it,
+        // the same way plucking a real string doesn't relocate the
+        // pluck point just because your finger drifts slightly.
     }
 
     function pointerUp(evt) {
         if (!state.dragging) return;
         state.dragging = false;
         try { state.canvas.releasePointerCapture(evt.pointerId); } catch (e) {}
-        releaseTargets();
+        // No explicit "release" step needed beyond clearing the flag —
+        // the grabbed point already carries its last dx/vx, and
+        // physicsStep() will fold it back into the ordinary
+        // neighbor-spring simulation on the very next frame, which is
+        // what lets the disturbance propagate and oscillate.
         ensureLoop();
     }
 
