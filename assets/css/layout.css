@@ -64,9 +64,11 @@
    assets/js/game-of-life.js. */
 
 .gol-banner {
-    width: 100%;
+    width: 66.6667%;
     height: 48px;
     margin-top: 2.5rem;
+    margin-left: auto;
+    margin-right: auto;
     overflow: hidden;
 }
 

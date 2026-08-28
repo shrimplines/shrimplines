@@ -56,11 +56,13 @@
     // grid widths from 40 to 500+ columns and row counts from 6 to 8
     // (the range produced by a ~48px banner at 6px cells).
     var SLOT_COLS = 12;
-    var MIN_ORGANISMS = 4;
-    var MAX_ORGANISMS = 32;
+    var SEED_DENSITY_MULTIPLIER = 2.5; // tunable: scales starting organism count
+    var MIN_ORGANISMS = Math.round(4 * SEED_DENSITY_MULTIPLIER);
+    var MAX_ORGANISMS = Math.round(32 * SEED_DENSITY_MULTIPLIER);
 
     function computeOrganismCount(cols) {
-        var count = Math.floor(cols / SLOT_COLS);
+        var base = Math.floor(cols / SLOT_COLS);
+        var count = Math.round(base * SEED_DENSITY_MULTIPLIER);
         return Math.max(MIN_ORGANISMS, Math.min(MAX_ORGANISMS, count));
     }
 
@@ -101,7 +103,13 @@
 
         for (var i = 0; i < count; i++) {
             var pattern = patternCycle[i % patternCycle.length];
-            var ox = Math.round(cols * ((i + 0.5) / count));
+            // Edge-to-edge anchoring: i=0 lands at the left boundary and
+            // i=count-1 lands at the right boundary, with the rest spread
+            // evenly between (rather than centered with margins on both
+            // sides). Falls back to the midpoint for a single organism.
+            var ox = count > 1
+                ? Math.round((i / (count - 1)) * (cols - 1))
+                : Math.round(cols / 2);
             var oy = rowAnchors[i % rowAnchors.length];
             place(pattern, ox, oy);
         }
