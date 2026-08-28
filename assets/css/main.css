@@ -30,6 +30,15 @@
     --page-y-space: 1rem;
     --page-y-padding: calc(var(--page-y-space) * 1.75);
     --content-section-gap: calc(var(--page-y-padding) * 4);
+
+    /* ============================================
+       SITE SHELL MAX WIDTH
+       ============================================ */
+    /* Caps the overall sidebar+gap+content composition on very wide
+       screens and centers it, instead of letting the content column
+       stretch indefinitely. Purely horizontal — does not affect height,
+       sidebar width, or the existing sidebar-to-content gap. */
+    --shell-max-width: 1440px;
 }
 
 * {
@@ -55,6 +64,8 @@ body {
     grid-template-columns: 220px 1fr;
     height: 100vh;
     overflow: hidden;
+    max-width: var(--shell-max-width);
+    margin: 0 auto;
 }
 
 .site-nav {
@@ -137,7 +148,8 @@ body {
 
 .nav-child.active {
     color: var(--color-accent);
-    text-decoration: none; /* active underline */
+    text-decoration: none;
+    /* active underline */
 }
 
 .content-area {

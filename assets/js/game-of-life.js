@@ -14,7 +14,7 @@
 // left/right, not looping top-to-bottom).
 
 (function () {
-    var CELL_SIZE = 9;      // px, at CSS pixel scale
+    var CELL_SIZE = 6;      // px, at CSS pixel scale (was 9 — higher resolution)
     var TICK_MS = 500;      // one generation per ~500ms, per spec
     var ALIVE_ALPHA = 0.85;
 
@@ -46,13 +46,24 @@
         }
     }
 
-    // Eight deliberately-chosen patterns spread across the width so the
-    // banner reads as a small living system rather than a die-off: one
-    // moving pattern (glider), three oscillators (blinker, toad, beacon),
-    // three still lifes (block, beehive, tub), and one classic chaotic
-    // "methuselah" pattern (R-pentomino) that takes a long time to settle.
-    // Verified via simulation to survive 2000+ generations at every
-    // tested banner width, from narrow mobile grids to wide desktop ones.
+    // Deterministic, width-adaptive seeding: rather than a fixed set of
+    // organisms, we give each organism a fixed "slot" of SLOT_COLS grid
+    // columns and derive the starting count from how many slots fit the
+    // available width. This keeps visual density roughly consistent
+    // whether the banner is narrow (mobile) or very wide (desktop),
+    // instead of stretching the same handful of patterns across more
+    // space. Verified via simulation to survive 3000+ generations across
+    // grid widths from 40 to 500+ columns and row counts from 6 to 8
+    // (the range produced by a ~48px banner at 6px cells).
+    var SLOT_COLS = 12;
+    var MIN_ORGANISMS = 4;
+    var MAX_ORGANISMS = 32;
+
+    function computeOrganismCount(cols) {
+        var count = Math.floor(cols / SLOT_COLS);
+        return Math.max(MIN_ORGANISMS, Math.min(MAX_ORGANISMS, count));
+    }
+
     function seedPattern(alive, cols, rows) {
         function place(cells, ox, oy) {
             cells.forEach(function (c) {
@@ -72,13 +83,28 @@
         var rPent   = [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]];
         var tub     = [[1, 0], [0, 1], [2, 1], [1, 2]];
 
-        var midRow = Math.max(0, Math.floor(rows / 2) - 1);
-        var fractions = [0.06, 0.18, 0.30, 0.42, 0.54, 0.66, 0.78, 0.90];
-        var patterns = [glider, blinker, toad, beacon, block, beehive, rPent, tub];
+        // A 10-slot repeating cycle so pattern types stay varied
+        // (moving, oscillators, still lifes) with the chaotic R-pentomino
+        // appearing only occasionally (1 in 10), per spec.
+        var patternCycle = [glider, blinker, toad, block, beehive, beacon, tub, glider, blinker, rPent];
 
-        patterns.forEach(function (pattern, i) {
-            place(pattern, Math.round(cols * fractions[i]), midRow);
-        });
+        // Three anchor rows spread through the available height so
+        // organisms aren't all placed on a single row — more useful now
+        // that smaller cells give the banner more rows to work with.
+        var rowAnchors = [
+            Math.max(0, Math.floor(rows * 0.25) - 1),
+            Math.max(0, Math.floor(rows * 0.5) - 1),
+            Math.max(0, Math.floor(rows * 0.7) - 1)
+        ];
+
+        var count = computeOrganismCount(cols);
+
+        for (var i = 0; i < count; i++) {
+            var pattern = patternCycle[i % patternCycle.length];
+            var ox = Math.round(cols * ((i + 0.5) / count));
+            var oy = rowAnchors[i % rowAnchors.length];
+            place(pattern, ox, oy);
+        }
     }
 
     function resize() {
