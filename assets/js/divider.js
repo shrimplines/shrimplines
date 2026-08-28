@@ -39,7 +39,7 @@
 (function () {
     var POINT_COUNT = 18;        // points along the chain — more = smoother curve
     var STIFFNESS = 0.15;        // neighbor coupling strength (discrete wave equation)
-    var DAMPING = 0.85;          // velocity damping per frame — produces the settle wobble
+    var DAMPING = 0.87;          // velocity damping per frame — produces the settle wobble
     var MAX_PULL = 46;           // px clamp so a wild drag can't stretch indefinitely
     var SETTLE_EPSILON = 0.05;   // below this displacement+velocity, treat as fully at rest
     var LINE_WIDTH = 1;          // matches the original 1px CSS border
