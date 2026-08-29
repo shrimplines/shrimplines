@@ -145,3 +145,67 @@
     height: 100%;
     cursor: pointer;
 }
+
+/* ============================================
+   LANDING PAGE — CUBBY STRUCTURE
+   ============================================
+   Structural pass only — no artifacts yet, just the shelves. A flat,
+   non-nested collection of "cubby" chunks (square / horizontal /
+   vertical) that reflows via flex-wrap instead of collapsing into a
+   uniform equal-width card grid.
+
+   Chunks use `flex: 0 0 auto` (not `1 1 auto`): they keep their
+   authored width/height rather than shrinking to fit the row, so a
+   horizontal cubby stays visibly wider-than-tall and a vertical one
+   stays taller-than-wide at any width. As the content column
+   narrows, chunks wrap onto new lines — down to one per line on
+   narrow columns — instead of being squeezed into mismatched
+   proportions.
+
+   .site-shell's content column has no breakpoints of its own (see
+   main.css — the whole site currently has none), so --chunk-unit
+   scales continuously with the viewport via clamp() instead of
+   depending on one. Horizontal/vertical chunks derive their long
+   side from that same unit + the container gap, so proportions stay
+   consistent as it scales.
+
+   typography.css wasn't available when this was written, so this
+   intentionally does NOT reach for --font-secondary /
+   --text-chapter-size the way .about-tagline does above — plain rem
+   sizing for the placeholder numbers until that file can be checked
+   against. */
+
+.landing-cubbies {
+    --chunk-unit: clamp(90px, 18vw, 170px);
+    --chunk-gap: 1rem;
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--chunk-gap);
+}
+
+.landing-chunk {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border);
+    color: var(--color-muted);
+    font-size: 1.25rem;
+}
+
+.landing-chunk--square {
+    width: var(--chunk-unit);
+    height: var(--chunk-unit);
+}
+
+.landing-chunk--horizontal {
+    width: calc(var(--chunk-unit) * 2 + var(--chunk-gap));
+    height: var(--chunk-unit);
+}
+
+.landing-chunk--vertical {
+    width: var(--chunk-unit);
+    height: calc(var(--chunk-unit) * 2 + var(--chunk-gap));
+}
