@@ -60,10 +60,20 @@
    context, rather than against anything higher up the page. Assumes
    .site-shell already establishes the positioning context
    divider.js's left-offset math depends on (shell geometry is
-   intentionally left untouched here). */
+   intentionally left untouched here).
+
+   This is now the ONLY .divider-canvas rule in the stylesheets. A
+   second, conflicting rule previously existed in main.css with
+   z-index: 5 — same selector, same specificity, loaded after this
+   file, so it silently won the cascade and undercut this z-index.
+   cursor/touch-action (previously only on that main.css rule) are
+   merged in here so removing it doesn't lose that interaction
+   behavior. */
 .divider-canvas {
     position: absolute;
     top: 0;
     z-index: 100;
     pointer-events: auto;
+    cursor: ew-resize;
+    touch-action: none;
 }
