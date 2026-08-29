@@ -39,7 +39,11 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     path = path.replace(/^\/|\/$/g, "");
     if (!path) {
-      return { section: defaultSection, subsection: null };
+      // Root URL: distinct landing-page state, not the "about" section.
+      // Signaled with section: null so callers can leave the
+      // server-rendered index.html content alone instead of fetching
+      // and overwriting it via loadContent().
+      return { section: null, subsection: null };
     }
     var parts = path.split("/");
     if (validSections.indexOf(parts[0]) === -1) {
@@ -210,13 +214,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
   window.addEventListener("popstate", function () {
     var parsed = parsePath();
+    // Landing state: nothing to route to. (Note: if the user had already
+    // navigated to a section and hits Back to "/", the original
+    // server-rendered landing content was already replaced by that
+    // navigation and isn't restored here — see report.)
+    if (parsed.section === null) return;
     navigateTo(parsed.section, parsed.subsection, { pushHistory: false });
   });
 
   var initial = parsePath();
-  navigateTo(initial.section, initial.subsection, {
-    pushHistory: true,
-    replace: true,
-    initial: true
-  });
+  if (initial.section !== null) {
+    navigateTo(initial.section, initial.subsection, {
+      pushHistory: true,
+      replace: true,
+      initial: true
+    });
+  }
 });
