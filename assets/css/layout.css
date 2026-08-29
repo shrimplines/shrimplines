@@ -31,22 +31,22 @@
     position: absolute;
     left: 0;
     right: 0;
-    bottom: -0.12em;
-    height: 0.16em;
+    bottom: -0.14em;
+    height: 0.22em;
     background-color: var(--color-accent);
-    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='7' viewBox='0 0 14 7'%3E%3Cpath d='M0 3.5 Q3.5 0 7 3.5 T14 3.5' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
-    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='7' viewBox='0 0 14 7'%3E%3Cpath d='M0 3.5 Q3.5 0 7 3.5 T14 3.5' fill='none' stroke='black' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
     -webkit-mask-repeat: repeat-x;
     mask-repeat: repeat-x;
-    -webkit-mask-size: 14px 7px;
-    mask-size: 14px 7px;
+    -webkit-mask-size: 28px 9px;
+    mask-size: 28px 9px;
     opacity: 0;
     transition: opacity 0.2s ease;
     pointer-events: none;
 }
 
 .about-header-text:hover::after {
-    opacity: 1;
+    opacity: 0.55;
 }
 
 @keyframes about-cursor-blink {
@@ -85,6 +85,43 @@
 
 .about-copy p:last-child {
     margin-bottom: 0;
+}
+
+/* Body-text link underline mechanic. Scoped to .about-copy only, so
+   .site-nav / structural links are never affected. Static state is a
+   plain 1px line in the link's own color; hover swaps to the same
+   masked-squiggle technique as .about-header-text::after (smaller,
+   since this sits under regular body copy rather than a display
+   heading). Both states live on the same absolutely-positioned
+   ::after, so nothing about the box model changes on hover — no
+   layout shift. Decorative only: href/click behavior untouched. */
+.about-copy a {
+    position: relative;
+    text-decoration: none;
+}
+
+.about-copy a::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.05em;
+    height: 1px;
+    background-color: currentColor;
+    transition: height 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.about-copy a:hover::after {
+    bottom: -0.08em;
+    height: 0.14em;
+    background-color: var(--color-accent);
+    opacity: 0.55;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-size: 18px 6px;
+    mask-size: 18px 6px;
 }
 
 /* ============================================

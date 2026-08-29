@@ -77,3 +77,60 @@
     cursor: ew-resize;
     touch-action: none;
 }
+
+/* ============================================
+   SHRIMPLINES — BODY-TEXT LINK TREATMENT (OPT-IN)
+   ============================================
+   Explicit opt-in utility for ordinary body/content links:
+
+       <a class="text-link" href="...">YouTube</a>
+
+   Deliberately NOT a bare `a { }` rule. nav.html's items are
+   <button class="nav-label"> / <button class="nav-child"> (no
+   anchors at all), and default.html has no other anchors in the
+   shell (.divider-canvas / .highlight-canvas are <canvas>), but this
+   stays opt-in regardless so navigation and any future structural
+   links are never affected unless this class is explicitly added.
+
+   Visually reuses the same masked hand-drawn-squiggle technique as
+   the About header's .about-header-text::after (layout.css) and the
+   same --color-accent token, scaled down for body-text sizing rather
+   than the display heading's larger tile. Both states live on one
+   absolutely-positioned ::after, so switching from the straight rest
+   line to the squiggle on hover changes no box dimensions — no
+   layout shift.
+
+   `color: inherit` is included here deliberately: there is no
+   pre-existing anchor color rule anywhere in the stylesheets to
+   preserve (nav uses <button>, not <a>), so this establishes the
+   link's rest-state color as part of this new convention rather than
+   falling back to a default browser blue/visited color. */
+.text-link {
+    position: relative;
+    color: inherit;
+    text-decoration: none;
+}
+
+.text-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.05em;
+    height: 1px;
+    background-color: currentColor;
+    transition: height 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.text-link:hover::after {
+    bottom: -0.08em;
+    height: 0.14em;
+    background-color: var(--color-accent);
+    opacity: 0.55;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+    -webkit-mask-size: 18px 6px;
+    mask-size: 18px 6px;
+}
