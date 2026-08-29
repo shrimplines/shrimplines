@@ -7,6 +7,21 @@
 // divider LINE itself, via an absolutely-positioned canvas that sits
 // on top of it (see .divider-canvas in components.css).
 //
+// TWO SEPARATE SURFACES, SAME CENTER:
+// #divider-canvas (from the layout) is now a WIDE, pointer-events:none
+// drawing-only surface (DRAW_WIDTH), sized to comfortably contain the
+// string's full MAX_PULL displacement without the canvas's own box
+// clipping it once it bends into the sidebar/content panels. A second,
+// separate element — a plain <div>, created and owned entirely by this
+// file, never added to any HTML template — is the actual pointer
+// target: narrow (HIT_WIDTH, unchanged from before), pointer-events:
+// auto, centered on the exact same divider X as the canvas. Widening
+// the drawing canvas therefore never widens the draggable region; the
+// two were previously the same element/width, which is what caused the
+// string to visually disappear past ~HIT_WIDTH/2 px of displacement —
+// not a stacking/z-index issue (that was a real but separate bug,
+// already fixed in components.css/main.css).
+//
 // Isolated on purpose: its own IIFE, its own canvas/id
 // (#divider-canvas, distinct from #gol-canvas), no shared state with
 // game-of-life.js.
@@ -62,11 +77,13 @@
     var MAX_PULL = 46;           // px clamp so a wild drag can't stretch indefinitely
     var SETTLE_EPSILON = 0.05;   // below this displacement+velocity, treat as fully at rest
     var LINE_WIDTH = 1;          // matches the original 1px CSS border
-    var HIT_WIDTH = 20;          // canvas width in CSS px, centered on the divider
+    var HIT_WIDTH = 20;          // pointer-interaction width, centered on the divider — unchanged, deliberately narrow
+    var DRAW_WIDTH = 2 * MAX_PULL + 10; // canvas drawing width — wide enough for the string's full MAX_PULL swing in either direction, plus a small margin
 
     var state = {
         canvas: null,
         ctx: null,
+        hitEl: null,       // narrow, invisible pointer-capture element — separate from the (wider) drawing canvas
         shell: null,
         nav: null,
         points: null,      // [{y, dx, vx}] — index 0 and length-1 are anchored endpoints
@@ -109,13 +126,19 @@
         var height = shellRect.height;
         var dpr = window.devicePixelRatio || 1;
 
-        canvas.style.left = (dividerX - HIT_WIDTH / 2) + 'px';
-        canvas.style.width = HIT_WIDTH + 'px';
+        canvas.style.left = (dividerX - DRAW_WIDTH / 2) + 'px';
+        canvas.style.width = DRAW_WIDTH + 'px';
         canvas.style.height = height + 'px';
 
-        canvas.width = Math.round(HIT_WIDTH * dpr);
+        canvas.width = Math.round(DRAW_WIDTH * dpr);
         canvas.height = Math.round(height * dpr);
         state.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        if (state.hitEl) {
+            state.hitEl.style.left = (dividerX - HIT_WIDTH / 2) + 'px';
+            state.hitEl.style.width = HIT_WIDTH + 'px';
+            state.hitEl.style.height = height + 'px';
+        }
 
         state.height = height;
         state.points = buildPoints(height);
@@ -125,12 +148,12 @@
     function drawStraight() {
         var ctx = state.ctx;
         if (!ctx) return;
-        ctx.clearRect(0, 0, HIT_WIDTH, state.height);
+        ctx.clearRect(0, 0, DRAW_WIDTH, state.height);
         ctx.strokeStyle = state.color;
         ctx.lineWidth = LINE_WIDTH;
         ctx.beginPath();
-        ctx.moveTo(HIT_WIDTH / 2 + 0.5, 0);
-        ctx.lineTo(HIT_WIDTH / 2 + 0.5, state.height);
+        ctx.moveTo(DRAW_WIDTH / 2 + 0.5, 0);
+        ctx.lineTo(DRAW_WIDTH / 2 + 0.5, state.height);
         ctx.stroke();
     }
 
@@ -139,12 +162,12 @@
         var points = state.points;
         if (!ctx || !points || !points.length) return;
 
-        ctx.clearRect(0, 0, HIT_WIDTH, state.height);
+        ctx.clearRect(0, 0, DRAW_WIDTH, state.height);
         ctx.strokeStyle = state.color;
         ctx.lineWidth = LINE_WIDTH;
         ctx.beginPath();
 
-        var center = HIT_WIDTH / 2;
+        var center = DRAW_WIDTH / 2;
         points.forEach(function (p, i) {
             var x = center + p.dx + 0.5;
             if (i === 0) {
@@ -240,14 +263,14 @@
 
     function pointerDown(evt) {
         if (!state.points) return;
-        var rect = state.canvas.getBoundingClientRect();
+        var rect = state.hitEl.getBoundingClientRect();
         var grabY = evt.clientY - rect.top;
 
         state.grabIndex = computeGrabIndex(grabY);
         if (state.grabIndex < 0) return;
 
         state.dragging = true;
-        try { state.canvas.setPointerCapture(evt.pointerId); } catch (e) {}
+        try { state.hitEl.setPointerCapture(evt.pointerId); } catch (e) {}
 
         var raw = evt.clientX - rect.left - HIT_WIDTH / 2;
         state.pendingDx = Math.max(-MAX_PULL, Math.min(MAX_PULL, raw));
@@ -258,7 +281,7 @@
 
     function pointerMove(evt) {
         if (!state.dragging) return;
-        var rect = state.canvas.getBoundingClientRect();
+        var rect = state.hitEl.getBoundingClientRect();
         var raw = evt.clientX - rect.left - HIT_WIDTH / 2;
         state.pendingDx = Math.max(-MAX_PULL, Math.min(MAX_PULL, raw));
         // Note: the grab index is intentionally NOT re-picked on move —
@@ -270,7 +293,7 @@
     function pointerUp(evt) {
         if (!state.dragging) return;
         state.dragging = false;
-        try { state.canvas.releasePointerCapture(evt.pointerId); } catch (e) {}
+        try { state.hitEl.releasePointerCapture(evt.pointerId); } catch (e) {}
         // No explicit "release" step needed beyond clearing the flag —
         // the grabbed point already carries its last dx/vx, and
         // physicsStep() will fold it back into the ordinary
@@ -290,6 +313,32 @@
         state.canvas = canvas;
         state.ctx = canvas.getContext('2d');
 
+        // The canvas is now sized to DRAW_WIDTH so the string can render
+        // across its full MAX_PULL swing without being clipped by its
+        // own box — but that means it also now visually overlaps the
+        // sidebar/content on either side of the actual narrow divider
+        // gap. It must not intercept pointer events there (that would
+        // silently widen the draggable/hoverable area and block normal
+        // clicks/selection on the panels). Interaction is handled
+        // entirely by a separate, narrow hit-test element instead.
+        canvas.style.pointerEvents = 'none';
+
+        var hitEl = document.createElement('div');
+        hitEl.setAttribute('aria-hidden', 'true');
+        hitEl.style.position = 'absolute';
+        hitEl.style.top = '0';
+        // Match whatever components.css defines for .divider-canvas's
+        // z-index, so the hit-test element stays in sync with that
+        // single authoritative stacking rule rather than a second,
+        // hardcoded value living here.
+        hitEl.style.zIndex = getComputedStyle(canvas).zIndex;
+        hitEl.style.cursor = 'ew-resize';
+        hitEl.style.touchAction = 'none';
+        hitEl.style.pointerEvents = 'auto';
+        hitEl.style.background = 'transparent';
+        canvas.insertAdjacentElement('afterend', hitEl);
+        state.hitEl = hitEl;
+
         readColor();
         layout();
 
@@ -298,10 +347,10 @@
         // done once we know the canvas is actually working.
         nav.style.borderRightColor = 'transparent';
 
-        canvas.addEventListener('pointerdown', pointerDown);
-        canvas.addEventListener('pointermove', pointerMove);
-        canvas.addEventListener('pointerup', pointerUp);
-        canvas.addEventListener('pointercancel', pointerUp);
+        hitEl.addEventListener('pointerdown', pointerDown);
+        hitEl.addEventListener('pointermove', pointerMove);
+        hitEl.addEventListener('pointerup', pointerUp);
+        hitEl.addEventListener('pointercancel', pointerUp);
 
         window.addEventListener('resize', layout);
     }
