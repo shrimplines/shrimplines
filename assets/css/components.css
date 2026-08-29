@@ -118,13 +118,26 @@
     right: 0;
     bottom: -0.05em;
     height: 1px;
-    background-color: currentColor;
-    transition: height 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+    background-color: var(--color-accent);
+    border-radius: 9999px;
+    transition: height 0.15s ease, bottom 0.15s ease, opacity 0.15s ease;
 }
 
 .text-link:hover::after {
-    bottom: -0.08em;
-    height: 0.14em;
+    /* Extends slightly past the text's own left/right edges so the
+       tiled wave has a touch of breathing room at the ends — the
+       link's own box/position is untouched, since this pseudo-element
+       is absolutely positioned and out of flow. */
+    left: -2px;
+    right: -2px;
+    bottom: -0.12em;
+    /* Root fix for the clipping/dotting: this box must be at least as
+       tall as mask-size's 6px, or the mask gets clipped to a thin band
+       through the middle of the wave, leaving only fragments visible
+       (same failure mode as the divider canvas being narrower than the
+       physics amplitude, just on the height axis here). 0.5em gives
+       ~8px at normal body text size — comfortable headroom over 6px. */
+    height: 0.5em;
     background-color: var(--color-accent);
     opacity: 0.55;
     -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='9' viewBox='0 0 28 9'%3E%3Cpath d='M0 4.5 Q7 0.5 14 4.5 T28 4.5' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'/%3E%3C/svg%3E");
@@ -133,4 +146,6 @@
     mask-repeat: repeat-x;
     -webkit-mask-size: 18px 6px;
     mask-size: 18px 6px;
+    -webkit-mask-position: left center;
+    mask-position: left center;
 }
