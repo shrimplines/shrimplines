@@ -27,11 +27,38 @@
         timer: null,
         resizeObserver: null,
         colorAccent: '#306880', // fallback; overwritten from CSS tokens
-        colorBorder: '#8a97a8'  // fallback; overwritten from CSS tokens
+        colorBorder: '#8a97a8', // fallback; overwritten from CSS tokens
+        genCount: 0,            // ticks elapsed since last (re)seed, for replenishment timing
+        stableStreak: 0,        // consecutive ticks with an unchanged population count
+        lastPopSize: -1,
+        lastReplenishTick: -Infinity
     };
 
     function key(x, y) {
         return x + ',' + y;
+    }
+
+    // Pattern catalog, hoisted to module scope so both the initial seed
+    // and the replenishment mechanism (below) can draw from the same
+    // definitions instead of maintaining two copies.
+    var PATTERNS = {
+        glider: [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]],
+        blinker: [[0, 0], [1, 0], [2, 0]],
+        toad: [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]],
+        beacon: [[0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [3, 3]],
+        block: [[0, 0], [1, 0], [0, 1], [1, 1]],
+        beehive: [[1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]],
+        rPent: [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]],
+        tub: [[1, 0], [0, 1], [2, 1], [1, 2]]
+    };
+
+    function placePattern(alive, cells, ox, oy, cols, rows) {
+        cells.forEach(function (c) {
+            var x = ((ox + c[0]) % cols + cols) % cols;
+            var y = oy + c[1];
+            if (y < 0 || y >= rows) return;
+            alive.add(key(x, y));
+        });
     }
 
     function readColors() {
@@ -57,11 +84,11 @@
     // (the range produced by a ~48px banner at 6px cells).
     var SLOT_COLS = 12;
     var SEED_DENSITY_MULTIPLIER = 5; // tunable: scales starting organism count.
-                                      // Single source of truth for density —
-                                      // verified against 240+/1000-generation
-                                      // simulations at multiple banner widths
-                                      // to confirm the population stabilizes
-                                      // rather than dying out.
+    // Single source of truth for density —
+    // verified against 240+/1000-generation
+    // simulations at multiple banner widths
+    // to confirm the population stabilizes
+    // rather than dying out.
     var MIN_ORGANISMS = Math.round(4 * SEED_DENSITY_MULTIPLIER);
     var MAX_ORGANISMS = Math.round(32 * SEED_DENSITY_MULTIPLIER);
 
@@ -71,30 +98,18 @@
         return Math.max(MIN_ORGANISMS, Math.min(MAX_ORGANISMS, count));
     }
 
+    // A 12-slot repeating cycle so pattern types stay varied (moving,
+    // oscillators, still lifes). Rebalanced from the original 10-slot
+    // cycle: still lifes (block/beehive/tub) reduced from 3/10 to 3/12,
+    // and the chaotic R-pentomino doubled (1/10 -> 2/12), since testing
+    // showed still-life-heavy seeds settle into a fixed population count
+    // almost immediately on narrow/normal banner widths.
+    var patternCycle = [
+        'glider', 'blinker', 'toad', 'rPent', 'beehive', 'beacon',
+        'glider', 'blinker', 'toad', 'block', 'rPent', 'tub'
+    ];
+
     function seedPattern(alive, cols, rows) {
-        function place(cells, ox, oy) {
-            cells.forEach(function (c) {
-                var x = ((ox + c[0]) % cols + cols) % cols;
-                var y = oy + c[1];
-                if (y < 0 || y >= rows) return;
-                alive.add(key(x, y));
-            });
-        }
-
-        var glider  = [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]];
-        var blinker = [[0, 0], [1, 0], [2, 0]];
-        var toad    = [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]];
-        var beacon  = [[0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [3, 3]];
-        var block   = [[0, 0], [1, 0], [0, 1], [1, 1]];
-        var beehive = [[1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]];
-        var rPent   = [[1, 0], [2, 0], [0, 1], [1, 1], [1, 2]];
-        var tub     = [[1, 0], [0, 1], [2, 1], [1, 2]];
-
-        // A 10-slot repeating cycle so pattern types stay varied
-        // (moving, oscillators, still lifes) with the chaotic R-pentomino
-        // appearing only occasionally (1 in 10), per spec.
-        var patternCycle = [glider, blinker, toad, block, beehive, beacon, tub, glider, blinker, rPent];
-
         // Three anchor rows spread through the available height so
         // organisms aren't all placed on a single row — more useful now
         // that smaller cells give the banner more rows to work with.
@@ -107,7 +122,7 @@
         var count = computeOrganismCount(cols);
 
         for (var i = 0; i < count; i++) {
-            var pattern = patternCycle[i % patternCycle.length];
+            var pattern = PATTERNS[patternCycle[i % patternCycle.length]];
             // Edge-to-edge anchoring: i=0 lands at the left boundary and
             // i=count-1 lands at the right boundary, with the rest spread
             // evenly between (rather than centered with margins on both
@@ -116,7 +131,68 @@
                 ? Math.round((i / (count - 1)) * (cols - 1))
                 : Math.round(cols / 2);
             var oy = rowAnchors[i % rowAnchors.length];
-            place(pattern, ox, oy);
+            placePattern(alive, pattern, ox, oy, cols, rows);
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Replenishment
+    // ------------------------------------------------------------
+    // The banner is only 6-8 rows tall with a hard (non-wrapping)
+    // top/bottom edge, so gliders — the only truly traveling pattern —
+    // die against that edge quickly. On narrow/normal widths, what's
+    // left settles into a fixed set of still lifes and period-2
+    // oscillators within a couple hundred generations and then just
+    // cycles in place forever with an unchanging population count.
+    //
+    // This introduces a single small organism, but only once the board
+    // has actually gone stale (population count unchanged for
+    // STALE_WINDOW ticks) and not more often than every
+    // REPLENISH_COOLDOWN ticks — so it reads as an occasional
+    // environmental disturbance, not a respawn timer. It only ever
+    // places into empty space, so it never destroys existing structures.
+    var STALE_WINDOW = 40;        // ticks of unchanged population before considered stale
+    var REPLENISH_COOLDOWN = 90;  // min ticks between replenishments
+    var REPLENISH_PATTERNS = ['rPent', 'glider', 'toad'];
+
+    function findEmptyPatch(alive, cols, rows) {
+        for (var attempt = 0; attempt < 12; attempt++) {
+            var ox = Math.floor(Math.random() * cols);
+            var oy = Math.floor(Math.random() * Math.max(1, rows - 3));
+            var clear = true;
+            for (var dx = -1; dx <= 4 && clear; dx++) {
+                for (var dy = -1; dy <= 4 && clear; dy++) {
+                    var nx = ((ox + dx) % cols + cols) % cols;
+                    var ny = oy + dy;
+                    if (ny < 0 || ny >= rows) continue;
+                    if (alive.has(key(nx, ny))) clear = false;
+                }
+            }
+            if (clear) return { ox: ox, oy: oy };
+        }
+        return null; // no clear patch found this attempt; try again later
+    }
+
+    function maybeReplenish() {
+        var alive = state.alive;
+        if (!alive) return;
+
+        if (alive.size === state.lastPopSize) {
+            state.stableStreak++;
+        } else {
+            state.stableStreak = 0;
+        }
+        state.lastPopSize = alive.size;
+
+        var ticksSinceReplenish = state.genCount - state.lastReplenishTick;
+        if (state.stableStreak >= STALE_WINDOW && ticksSinceReplenish >= REPLENISH_COOLDOWN) {
+            var patch = findEmptyPatch(alive, state.cols, state.rows);
+            if (patch) {
+                var name = REPLENISH_PATTERNS[Math.floor(Math.random() * REPLENISH_PATTERNS.length)];
+                placePattern(alive, PATTERNS[name], patch.ox, patch.oy, state.cols, state.rows);
+                state.lastReplenishTick = state.genCount;
+                state.stableStreak = 0;
+            }
         }
     }
 
@@ -141,6 +217,12 @@
             state.rows = newRows;
             state.alive = new Set();
             seedPattern(state.alive, state.cols, state.rows);
+            // Fresh grid dimensions invalidate replenishment timing —
+            // reset so a fresh seed isn't immediately judged "stale".
+            state.genCount = 0;
+            state.stableStreak = 0;
+            state.lastPopSize = -1;
+            state.lastReplenishTick = -Infinity;
         }
 
         render();
@@ -266,6 +348,8 @@
 
     function tick() {
         step();
+        state.genCount++;
+        maybeReplenish();
         render();
     }
 
@@ -306,6 +390,10 @@
         state.alive = null;
         state.cols = 0;
         state.rows = 0;
+        state.genCount = 0;
+        state.stableStreak = 0;
+        state.lastPopSize = -1;
+        state.lastReplenishTick = -Infinity;
     }
 
     function init(canvas) {
