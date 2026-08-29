@@ -173,6 +173,18 @@ body {
        tokens themselves are untouched, so nav padding and
        --content-section-gap are unaffected. */
     padding: calc(var(--page-y-padding) * 1.5) 1.5rem var(--page-y-padding) calc(var(--nav-edge-space) * 1.5);
+    /* Hides the native scrollbar without touching overflow-y: auto, so
+       wheel/trackpad/keyboard/touch scrolling is unaffected. Mirrors the
+       existing .site-nav pattern below rather than inventing a new one. */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* legacy Edge/IE */
+}
+
+.content-area::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari */
 }
 
 .content-section {
