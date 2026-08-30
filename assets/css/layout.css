@@ -149,36 +149,45 @@
 /* ============================================
    ABOUT PAGE — CUBBY MOTIF
    ============================================
-   A small, exact interlocking arrangement — not a gallery. The
-   geometry (1 vertical 1x2, 2 horizontal 2x1, 2 square 1x1, filling a
-   4-column x 2-row block with no gaps or overlaps) is expressed
-   directly as CSS Grid placement rather than as manually computed
-   pixel widths: each block declares which tracks it spans, and grid
-   sizing/gap math handles the rest. This keeps the interlocking
-   geometry exact at any size instead of relying on calc() staying in
-   sync with a flex layout.
+   Reads as one architectural object — a table whose cells have been
+   rearranged into an irregular shape — not a set of floating cards.
+   Every seam (the outer boundary AND the internal boundaries between
+   touching blocks) is the same 1px hairline, produced by a single
+   technique: the grid container's own background paints every seam
+   (border + gaps), and each block's own background paints over
+   everything else. No block carries its own border, radius, or
+   shadow, so nothing reads as an independent "card."
 
-   Every dimension derives from the single --cubby-unit custom
-   property (used as both the column and row track size), so the
-   whole motif scales as one piece — no block is ever squashed
-   independently of the others.
+   Width is set to the exact same 66.6667% rule as .gol-banner below,
+   against the same shared parent (.about-page) — not an
+   approximation. Both are direct siblings of that one container, so
+   this guarantees the cubby motif is never wider than the Game of
+   Life strip and the two scale together at every viewport, with no
+   separate breakpoint logic to keep in sync.
 
-   Blocks are flush (gap: 1px) using the background-as-hairline
-   technique: the grid container's own background paints the shared
-   1px seams, and each block's own background covers everything else.
-   This reads as a small partitioned cubby wall the blocks actually
-   touch, rather than floating cards with margins between them. */
+   The base unit is the grid's own equal 1fr track, shared by both
+   axes. Column width and row height are forced to match by giving
+   the container `aspect-ratio: 2 / 1` (4 columns : 2 rows) instead of
+   a fixed pixel unit — the container's height is derived directly
+   from its (shared, GoL-matched) width, so both axes scale from one
+   calculation rather than two independent ones. Vertical/horizontal
+   blocks span 2 of those equal tracks, so they stay exactly 2x a
+   square neighbor at every size. (The 1px border + gaps land
+   asymmetrically across the two axes — 3 internal column gaps + the
+   border vs. 1 internal row gap + the border — which introduces a
+   theoretical sub-pixel difference between a column's width and a
+   row's height; at any real rendered size this is a fraction of a
+   pixel and isn't visible.) */
 
 .cubby-motif {
-    --cubby-unit: clamp(40px, 9vw, 72px);
-
+    width: 66.6667%;
+    aspect-ratio: 2 / 1;
     display: grid;
-    grid-template-columns: repeat(4, var(--cubby-unit));
-    grid-template-rows: repeat(2, var(--cubby-unit));
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(2, 1fr);
     gap: 1px;
     background-color: var(--color-border);
-    width: max-content;
-    max-width: 100%;
+    border: 1px solid var(--color-border);
     margin-top: 2.5rem;
 }
 
@@ -188,7 +197,7 @@
     justify-content: center;
     background-color: var(--color-background);
     color: var(--color-muted);
-    font-size: 0.75rem;
+    font-size: var(--text-body-size);
 }
 
 /* Diagram (colors illustrative only — geometry is what matters):
