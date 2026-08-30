@@ -147,65 +147,74 @@
 }
 
 /* ============================================
-   LANDING PAGE — CUBBY STRUCTURE
+   ABOUT PAGE — CUBBY MOTIF
    ============================================
-   Structural pass only — no artifacts yet, just the shelves. A flat,
-   non-nested collection of "cubby" chunks (square / horizontal /
-   vertical) that reflows via flex-wrap instead of collapsing into a
-   uniform equal-width card grid.
+   A small, exact interlocking arrangement — not a gallery. The
+   geometry (1 vertical 1x2, 2 horizontal 2x1, 2 square 1x1, filling a
+   4-column x 2-row block with no gaps or overlaps) is expressed
+   directly as CSS Grid placement rather than as manually computed
+   pixel widths: each block declares which tracks it spans, and grid
+   sizing/gap math handles the rest. This keeps the interlocking
+   geometry exact at any size instead of relying on calc() staying in
+   sync with a flex layout.
 
-   Chunks use `flex: 0 0 auto` (not `1 1 auto`): they keep their
-   authored width/height rather than shrinking to fit the row, so a
-   horizontal cubby stays visibly wider-than-tall and a vertical one
-   stays taller-than-wide at any width. As the content column
-   narrows, chunks wrap onto new lines — down to one per line on
-   narrow columns — instead of being squeezed into mismatched
-   proportions.
+   Every dimension derives from the single --cubby-unit custom
+   property (used as both the column and row track size), so the
+   whole motif scales as one piece — no block is ever squashed
+   independently of the others.
 
-   .site-shell's content column has no breakpoints of its own (see
-   main.css — the whole site currently has none), so --chunk-unit
-   scales continuously with the viewport via clamp() instead of
-   depending on one. Horizontal/vertical chunks derive their long
-   side from that same unit + the container gap, so proportions stay
-   consistent as it scales.
+   Blocks are flush (gap: 1px) using the background-as-hairline
+   technique: the grid container's own background paints the shared
+   1px seams, and each block's own background covers everything else.
+   This reads as a small partitioned cubby wall the blocks actually
+   touch, rather than floating cards with margins between them. */
 
-   typography.css wasn't available when this was written, so this
-   intentionally does NOT reach for --font-secondary /
-   --text-chapter-size the way .about-tagline does above — plain rem
-   sizing for the placeholder numbers until that file can be checked
-   against. */
+.cubby-motif {
+    --cubby-unit: clamp(40px, 9vw, 72px);
 
-.landing-cubbies {
-    --chunk-unit: clamp(90px, 18vw, 170px);
-    --chunk-gap: 1rem;
-
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: var(--chunk-gap);
+    display: grid;
+    grid-template-columns: repeat(4, var(--cubby-unit));
+    grid-template-rows: repeat(2, var(--cubby-unit));
+    gap: 1px;
+    background-color: var(--color-border);
+    width: max-content;
+    max-width: 100%;
+    margin-top: 2.5rem;
 }
 
-.landing-chunk {
-    flex: 0 0 auto;
+.cubby-block {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--color-border);
+    background-color: var(--color-background);
     color: var(--color-muted);
-    font-size: 1.25rem;
+    font-size: 0.75rem;
 }
 
-.landing-chunk--square {
-    width: var(--chunk-unit);
-    height: var(--chunk-unit);
+/* Diagram (colors illustrative only — geometry is what matters):
+     purple yellow green  green
+     purple green  green  yellow   */
+.cubby-block--purple {
+    grid-column: 1;
+    grid-row: 1 / 3;
 }
 
-.landing-chunk--horizontal {
-    width: calc(var(--chunk-unit) * 2 + var(--chunk-gap));
-    height: var(--chunk-unit);
+.cubby-block--yellow-a {
+    grid-column: 2;
+    grid-row: 1;
 }
 
-.landing-chunk--vertical {
-    width: var(--chunk-unit);
-    height: calc(var(--chunk-unit) * 2 + var(--chunk-gap));
+.cubby-block--green-a {
+    grid-column: 3 / 5;
+    grid-row: 1;
+}
+
+.cubby-block--green-b {
+    grid-column: 2 / 4;
+    grid-row: 2;
+}
+
+.cubby-block--yellow-b {
+    grid-column: 4;
+    grid-row: 2;
 }
