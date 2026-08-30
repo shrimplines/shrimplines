@@ -38,13 +38,6 @@ document.addEventListener("DOMContentLoaded", function () {
       path = path.slice(baseurl.length);
     }
     path = path.replace(/^\/|\/$/g, "");
-    if (!path) {
-      // Root URL: distinct landing-page state, not the "about" section.
-      // Signaled with section: null so callers can leave the
-      // server-rendered index.html content alone instead of fetching
-      // and overwriting it via loadContent().
-      return { section: null, subsection: null };
-    }
     var parts = path.split("/");
     if (validSections.indexOf(parts[0]) === -1) {
       return { section: defaultSection, subsection: null };
