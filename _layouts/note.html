@@ -1,0 +1,37 @@
+---
+layout: default
+---
+
+{% comment %}
+Shared presentation for a normal note: TITLE / DATE / IMAGE / body.
+     Applied automatically to everything in _notes via the `defaults`
+     block in _config.yml — individual post files never declare it.
+
+     A post that later wants to be its own little webpage overrides
+     `layout:` in its own front matter and bypasses this file entirely;
+     it still gets the site shell as long as its layout chains to
+     `default`. Nothing here is load-bearing for the router.
+{% endcomment %}
+
+<article class="note">
+    <header class="note-header">
+        <h1 class="page-header note-title">{{ page.title }}</h1>
+
+        {% if page.date %}
+        <p class="note-date meta">
+            <time datetime="{{ page.date | date: '%Y-%m-%d' }}">{{ page.date | date: '%Y.%m.%d' }}</time>
+        </p>
+        {% endif %}
+    </header>
+
+    {% if page.image %}
+    <figure class="note-figure">
+        <img class="note-image" src="{{ page.image | relative_url }}"
+            alt="{{ page.image_alt | default: page.title }}">
+    </figure>
+    {% endif %}
+
+    <div class="note-body">
+        {{ content }}
+    </div>
+</article>

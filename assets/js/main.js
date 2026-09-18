@@ -6,6 +6,20 @@ document.addEventListener("DOMContentLoaded", function () {
   var baseurl = document.body.dataset.baseurl || "";
   var defaultSection = "about";
 
+  // Router shell vs. server-rendered page.
+  //
+  // "on"  (default): this document is an empty shell; read the URL and
+  //        fetch the matching /content/ fragment into #content-area.
+  // "off": the server already rendered the real content into
+  //        #content-area (a note page). Do NOT fetch anything on load,
+  //        or the post gets wiped. Just sync the nav highlight.
+  //
+  // Set from <body data-router> in _layouts/default.html, which gets it
+  // from the _notes defaults in _config.yml.
+  var routerEnabled = document.body.dataset.router !== "off";
+  var staticSection = document.body.dataset.section || null;
+  var staticSubsection = document.body.dataset.subsection || null;
+
   var validSections = Array.prototype.map.call(sections, function (s) {
     return s.dataset.section;
   });
@@ -206,6 +220,15 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 
   window.addEventListener("popstate", function () {
+    // This document was server-rendered (a note page). The user has
+    // since navigated client-side via the nav and is now going Back to
+    // a URL this router cannot reconstruct as a fragment. A real
+    // reload lands on the correct server-rendered page.
+    if (!routerEnabled) {
+      window.location.reload();
+      return;
+    }
+
     var parsed = parsePath();
     // Landing state: nothing to route to. (Note: if the user had already
     // navigated to a section and hits Back to "/", the original
@@ -215,12 +238,22 @@ document.addEventListener("DOMContentLoaded", function () {
     navigateTo(parsed.section, parsed.subsection, { pushHistory: false });
   });
 
-  var initial = parsePath();
-  if (initial.section !== null) {
-    navigateTo(initial.section, initial.subsection, {
-      pushHistory: true,
-      replace: true,
-      initial: true
-    });
+  if (routerEnabled) {
+    var initial = parsePath();
+    if (initial.section !== null) {
+      navigateTo(initial.section, initial.subsection, {
+        pushHistory: true,
+        replace: true,
+        initial: true
+      });
+    }
+  } else if (staticSection) {
+    // Server-rendered page: highlight the nav to match, but leave
+    // #content-area exactly as the server delivered it. Nav buttons
+    // stay wired, so clicking NOTES from a post still works normally.
+    setActiveSection(staticSection);
+    setActiveChild(staticSection, staticSubsection);
+    currentSection = staticSection;
+    currentSubsection = staticSubsection;
   }
 });

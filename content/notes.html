@@ -1,17 +1,23 @@
+---
+# Empty-ish front matter is required so Jekyll runs Liquid on this file.
+# No `layout:` — this stays a bare fragment, exactly as main.js expects,
+# and still builds to /content/notes.html.
+title: Notes
+---
+
 <h1 class="page-header">Notes content</h1>
 
 <section id="thoughts" class="content-section">
     <h2 class="chapter-heading">Thoughts</h2>
-    <p>Thoughts placeholder content. Occasionally I wander over to <a class="text-link"
-            href="https://youtube.com/">YouTube</a>.</p>
+    {% include note-list.html category="thoughts" %}
 </section>
 
 <section id="essays" class="content-section">
     <h2 class="chapter-heading">Essays</h2>
-    <p>Essays placeholder content.</p>
+    {% include note-list.html category="essays" %}
 </section>
 
 <section id="inspiration" class="content-section">
     <h2 class="chapter-heading">Inspiration</h2>
-    <p>Inspiration placeholder content.</p>
+    {% include note-list.html category="inspiration" %}
 </section>

@@ -12,7 +12,20 @@
     <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
 </head>
 
-<body data-baseurl="{{ site.baseurl }}">
+{% comment %}
+data-router: "on" (default) means this document is a router shell —
+     main.js reads the URL and fetches the matching /content/ fragment
+     into #content-area on load. "off" means the server already rendered
+     the real content (e.g. a note page), so main.js must leave
+     #content-area alone and only sync the nav highlight. Set via the
+     _notes defaults in _config.yml, not per-file.
+
+     data-section / data-subsection let a router-off page tell the nav
+     which parent/child to highlight without any client-side fetch.
+{% endcomment %}
+
+<body data-baseurl="{{ site.baseurl }}" data-router="{{ page.router | default: 'on' }}"
+    data-section="{{ page.section | default: '' }}" data-subsection="{{ page.category | default: '' }}">
     <div class="site-shell">
         {% include nav.html %}
 
@@ -22,14 +35,7 @@
             <div class="text-wrapper">
                 <canvas class="highlight-canvas"></canvas>
 
-                {% if content %}
                 {{ content }}
-                {% else %}
-                <section class="content-section">
-                    <h1>Shrimplines</h1>
-                    <p>Select text here to see the marker highlight...</p>
-                </section>
-                {% endif %}
             </div>
         </main>
     </div>

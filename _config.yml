@@ -34,6 +34,45 @@ theme: minima
 plugins:
   - jekyll-feed
 
+# ============================================
+# CONTENT COLLECTIONS
+# ============================================
+# `notes` is the publishing collection. Drop a Markdown file in
+# _notes/ and it becomes a real page at /notes/<filename-slug>/.
+#
+# A collection is used instead of _posts because _posts is a single
+# global stream with a single global permalink. Reserving it for Notes
+# would leave Projects unable to use the same drop-a-file workflow
+# later. Collections scale: _projects can be added the same way.
+#
+# RESERVED SLUGS: do not name a note thoughts.md, essays.md, or
+# inspiration.md — those would generate /notes/thoughts/ etc. and
+# shadow the router's scroll-anchor URLs.
+collections:
+  notes:
+    output: true
+    permalink: /notes/:name/
+
+# Every document in _notes gets these automatically, so individual
+# post files only need title / date / category / image.
+#
+#   layout: note   -> the shared post presentation
+#   router: "off"  -> tells main.js this is a real page, not a router
+#                     shell, so it must not overwrite the content
+#   section: notes -> which nav parent to highlight
+#
+# Any of these can still be overridden per-file. A future post that
+# wants to be its own little webpage just sets its own `layout:` in
+# front matter; nothing else here has to change.
+defaults:
+  - scope:
+      path: ""
+      type: "notes"
+    values:
+      layout: "note"
+      router: "off"
+      section: "notes"
+
 # Exclude from processing.
 # The following items will not be processed, by default.
 # Any item listed under the `exclude:` key here will be automatically added to

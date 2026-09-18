@@ -1,0 +1,22 @@
+{%- comment -%}
+Renders the note listing for one category, newest first.
+
+    {% include note-list.html category="thoughts" %}
+
+Pulls straight from the _notes collection, so adding a Markdown file
+is the only step needed for a post to appear here. Nothing about a
+post is hard-coded in this file or in content/notes.html.
+{%- endcomment -%}
+{%- assign items = site.notes | where: "category", include.category | sort: "date" | reverse -%}
+{%- if items.size > 0 -%}
+<ul class="note-list">
+    {%- for note in items %}
+    <li class="note-list-item">
+        <a class="note-list-link text-link" href="{{ note.url | relative_url }}">{{ note.title }}</a>
+        <time class="note-list-date meta" datetime="{{ note.date | date: '%Y-%m-%d' }}">{{ note.date | date: '%Y.%m.%d' }}</time>
+    </li>
+    {%- endfor %}
+</ul>
+{%- else -%}
+<p class="note-list-empty meta">Nothing here yet.</p>
+{%- endif -%}
