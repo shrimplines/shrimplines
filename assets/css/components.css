@@ -149,3 +149,172 @@
     -webkit-mask-position: left center;
     mask-position: left center;
 }
+
+/* ============================================
+   SHRIMPLINES — NOTE BODY: IMAGES AND IMAGE GROUPS
+   ============================================
+   Styles for _includes/img.html and the optional group wrappers used
+   inside a note's Markdown. Everything is scoped under .note-body
+   (the article body rendered by _layouts/note.html), so nothing here
+   can reach the About page, Projects page, nav, or the Notes index.
+   Per-image height travels as an inline custom property (--h) on that
+   one <figure>; there is no global image rule.
+
+   Two presentations, one authoring syntax:
+     - Regular notes: linear flow. Standalone figures are left-aligned
+       in the text column. A group (<div class="note-group
+       note-group--row">) is an explicit opt-in row.
+     - Essays (<article class="note note--essay">, added by note.html
+       when category == essays): same figures and rows, plus the bento
+       layouts. Bento selectors are all prefixed .note--essay, so a
+       bento wrapper written in a non-essay note simply behaves like a
+       row. */
+
+/* Reading column. Matches .about-copy's 640px for regular notes;
+   essays get slightly more room for bento groups. */
+.note-body {
+    max-width: 640px;
+}
+
+.note--essay .note-body {
+    max-width: 760px;
+}
+
+/* --- Standalone figure ---------------------------------------------
+   height comes from --h (set per image). width:auto keeps the aspect
+   ratio; max-width:100% keeps it inside the column. If a chosen height
+   would be wider than the column, object-fit:contain letterboxes
+   rather than distorting. Cropping is opt-in via fit="cover". */
+.note-body .note-fig {
+    margin: 1.75rem 0;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.note-body .note-fig img {
+    display: block;
+    height: var(--h, auto);
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    object-position: left top;
+}
+
+.note-body .note-fig--cover img {
+    object-fit: cover;
+    object-position: var(--pos, center);
+}
+
+.note-body .note-fig-caption {
+    margin-top: 0.5rem;
+    color: var(--color-muted);
+}
+
+/* --- Row group (all notes, explicit opt-in) -------------------------
+   Each image keeps its own --h. Figures sit side by side at their own
+   widths and wrap to a new line if they don't fit. */
+.note-body .note-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: 1.75rem 0;
+}
+
+.note-body .note-group>.note-fig {
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+/* --- Bento groups (essays only) -------------------------------------
+   The group's height is --group-h (set on the wrapper, default 420px);
+   tiles fill the grid, so individual image heights are ignored here.
+   Tiles crop to fill by default (that is what makes it a bento);
+   fit="contain" on an image opts that tile out of cropping, and
+   pos="..." chooses the focus point.
+
+     bento-3      big tile left (2 rows tall), two stacked right
+     bento-3-top  wide tile on top, two side by side below */
+.note--essay .note-group[class*="note-group--bento"] {
+    display: grid;
+    align-items: stretch;
+    gap: 1rem;
+    height: var(--group-h, 420px);
+}
+
+.note--essay .note-group--bento-3 {
+    grid-template-columns: 2fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.note--essay .note-group--bento-3>.note-fig:first-child {
+    grid-row: 1 / 3;
+}
+
+.note--essay .note-group--bento-3-top {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 3fr 2fr;
+}
+
+.note--essay .note-group--bento-3-top>.note-fig:first-child {
+    grid-column: 1 / 3;
+}
+
+.note--essay .note-group[class*="note-group--bento"]>.note-fig {
+    display: flex;
+    flex-direction: column;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    min-height: 0;
+}
+
+.note--essay .note-group[class*="note-group--bento"]>.note-fig img {
+    flex: 1 1 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: var(--pos, center);
+}
+
+.note--essay .note-group[class*="note-group--bento"]>.note-fig--contain img {
+    object-fit: contain;
+    object-position: left top;
+}
+
+.note--essay .note-group[class*="note-group--bento"]>.note-fig .note-fig-caption {
+    flex: none;
+}
+
+/* --- Narrow screens ---------------------------------------------------
+   Fixed heights are dropped so every image scales by width (still no
+   distortion), and groups stack in the order they were written. */
+@media (max-width: 700px) {
+    .note-body .note-fig img {
+        height: auto;
+    }
+
+    .note-body .note-group {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: stretch;
+    }
+
+    .note--essay .note-group[class*="note-group--bento"] {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+    }
+
+    .note--essay .note-group[class*="note-group--bento"]>.note-fig {
+        width: 100%;
+    }
+
+    .note--essay .note-group[class*="note-group--bento"]>.note-fig img {
+        flex: none;
+        height: auto;
+        object-fit: contain;
+    }
+}

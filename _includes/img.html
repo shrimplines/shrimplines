@@ -1,0 +1,26 @@
+{%- comment -%}
+One image, placed exactly where this tag sits in a note.
+
+{% include img.html src="/assets/images/x.jpg" alt="..." height=320 caption="..." %}
+
+src required. Path under /assets/images/ (baseurl is handled).
+alt recommended. Empty alt = decorative.
+height optional. Displayed height in px. Width follows the image's
+own aspect ratio. Omit for natural size (capped to column).
+caption optional. Inline Markdown works (*italic*, [link](url)).
+Don't use double quotes inside it.
+fit optional. "cover" crops to fill, "contain" never crops.
+Default is contain (standalone/row) and cover (essay bento).
+pos optional. Focus point when cropping, e.g. pos="center top".
+
+Keep a blank line above and below the tag so Markdown treats it as
+its own block. Output is deliberately unindented and blank-line free.
+{%- endcomment -%}
+{%- assign cap = include.caption | markdownify | remove: '<p>' | remove: '</p>' | strip -%}
+<figure class="note-fig{% if include.fit %} note-fig--{{ include.fit }}{% endif %}" {% if include.height or include.pos
+    %}
+    style="{% if include.height %}--h:{{ include.height }}px;{% endif %}{% if include.pos %}--pos:{{ include.pos }};{% endif %}"
+    {% endif %}>
+    <img src="{{ include.src | relative_url }}" alt="{{ include.alt | escape }}" loading="lazy">
+    {% if include.caption %}<figcaption class="note-fig-caption meta">{{ cap }}</figcaption>{% endif %}
+</figure>
