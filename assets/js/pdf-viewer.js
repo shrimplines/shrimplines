@@ -145,15 +145,21 @@
         if (!width || !this.pageEntries.length) return;
 
         var y = 0;
+        var changed = [];
         this.pageEntries.forEach(function (entry) {
             var scale = width / entry.naturalWidth;
             var displayHeight = entry.naturalHeight * scale;
+            if (entry.displayScale !== scale && entry.rendered) changed.push(entry);
             entry.el.style.width = width + 'px';
             entry.el.style.height = displayHeight + 'px';
             entry.displayScale = scale;
             entry.top = y;
             y += displayHeight;
             if (entry !== this.pageEntries[this.pageEntries.length - 1]) {
+                // The gap between pages is the CSS margin-bottom on
+                // .pdf-page (components.css); read it back so the stack
+                // height used for maxOffset matches what's really laid out.
+                entry.gap = parseFloat(window.getComputedStyle(entry.el).marginBottom) || 0;
                 y += entry.gap;
             }
         }, this);
@@ -161,9 +167,8 @@
         this.stackHeight = y;
         this.maxOffset = Math.max(0, this.stackHeight - this.viewport.clientHeight);
         this.setOffset(this.offset, true); // re-clamp without animating
-        this.pageEntries.forEach(function (entry) {
-            if (entry.rendered) this.scheduleRerender(entry);
-        }, this);
+        // Only pages whose scale actually changed need a new canvas.
+        changed.forEach(function (entry) { this.scheduleRerender(entry); }, this);
     };
 
     // ---- scroll offset ----------------------------------------------------
@@ -297,7 +302,8 @@
         import(baseurl() + '/assets/js/pdfjs/pdf.mjs').then(function (pdfjsLib) {
             self.pdfjsLib = pdfjsLib;
             pdfjsLib.GlobalWorkerOptions.workerSrc = baseurl() + '/assets/js/pdfjs/pdf.worker.mjs';
-            return pdfjsLib.getDocument(self.src).promise;
+            // PDF.js 6 requires a params object; a bare URL string is rejected.
+            return pdfjsLib.getDocument({ url: self.src }).promise;
         }).then(function (pdf) {
             self.pdf = pdf;
             return self.buildPageShells();
@@ -353,10 +359,14 @@
         var self = this;
         var observer = new IntersectionObserver(function (entries) {
             entries.forEach(function (ioEntry) {
-                if (!ioEntry.isIntersecting) return;
                 var pageNumber = parseInt(ioEntry.target.getAttribute('data-page-number'), 10);
                 var entry = self.pageEntries[pageNumber - 1];
-                if (entry && !entry.rendered) self.renderPage(entry);
+                if (!entry) return;
+                if (!ioEntry.isIntersecting) {
+                    if (entry.rendered) self.releasePage(entry);
+                    return;
+                }
+                if (!entry.rendered) self.renderPage(entry);
             });
         }, { root: this.viewport, rootMargin: RENDER_MARGIN });
 
@@ -368,19 +378,25 @@
         var dpr = Math.min(window.devicePixelRatio || 1, BASE_SCALE_CAP);
         var scale = (entry.displayScale || 1) * dpr;
         var viewport = entry.page.getViewport({ scale: scale });
-        var canvas = entry.canvas;
+        // A fresh canvas per render: a canceled PDF.js render can still be
+        // winding down on the old canvas, and reusing one canvas for two
+        // render() calls at once is not allowed.
+        var canvas = document.createElement('canvas');
         var ctx = canvas.getContext('2d');
-
         canvas.width = Math.round(viewport.width);
         canvas.height = Math.round(viewport.height);
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
+        entry.el.replaceChild(canvas, entry.canvas);
+        entry.canvas = canvas;
 
         entry.rendered = true;
-        entry.renderTask = entry.page.render({ canvasContext: ctx, viewport: viewport });
-        entry.renderTask.promise.then(function () {
-            return entry.page.getTextContent ? entry.page.getTextContent() : null;
-        }).catch(function () { /* rendering failure already surfaced via status */ });
+        var task = entry.page.render({ canvasContext: ctx, viewport: viewport });
+        entry.renderTask = task;
+        task.promise.catch(function (err) {
+            // Cancellation (resize / page released) is expected, not an error.
+            if (err && err.name === 'RenderingCancelledException') return;
+            // eslint-disable-next-line no-console
+            console.error('[pdf-viewer] page ' + entry.pageNumber, err);
+        });
 
         // Text layer — selectable/searchable/accessible text over the
         // canvas. Guarded: PDF.js's text-layer entry point has moved
@@ -390,6 +406,10 @@
         if (this.pdfjsLib.TextLayer && entry.page.streamTextContent) {
             var textLayerDiv = document.createElement('div');
             textLayerDiv.className = 'pdf-page-text-layer';
+            // PDF.js 6 sizes the layer and every span with calc() against
+            // this custom property (normally set by its own pdf_viewer.css
+            // wrapper, which this site doesn't ship). CSS px per PDF unit.
+            textLayerDiv.style.setProperty('--total-scale-factor', entry.displayScale || 1);
             entry.el.appendChild(textLayerDiv);
             try {
                 var textLayer = new this.pdfjsLib.TextLayer({
@@ -397,7 +417,7 @@
                     container: textLayerDiv,
                     viewport: entry.page.getViewport({ scale: entry.displayScale || 1 })
                 });
-                textLayer.render();
+                textLayer.render().catch(function () { /* text is best-effort */ });
             } catch (e) {
                 textLayerDiv.remove();
             }
@@ -414,6 +434,21 @@
         var textLayer = entry.el.querySelector('.pdf-page-text-layer');
         if (textLayer) textLayer.remove();
         this.renderPage(entry);
+    };
+
+    // Frees a page that has scrolled well outside RENDER_MARGIN: cancels
+    // any in-flight render and zeroes the canvas so its pixel buffer can
+    // be reclaimed. The page shell keeps its size, so layout is unchanged.
+    Reader.prototype.releasePage = function (entry) {
+        if (entry.renderTask && entry.renderTask.cancel) {
+            try { entry.renderTask.cancel(); } catch (e) { /* ignore */ }
+        }
+        entry.renderTask = null;
+        entry.rendered = false;
+        entry.canvas.width = 0;
+        entry.canvas.height = 0;
+        var textLayer = entry.el.querySelector('.pdf-page-text-layer');
+        if (textLayer) textLayer.remove();
     };
 
     Reader.prototype.observeResize = function () {

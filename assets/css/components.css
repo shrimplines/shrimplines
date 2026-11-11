@@ -447,15 +447,33 @@
 .pdf-page-text-layer {
     position: absolute;
     inset: 0;
-    overflow: hidden;
+    overflow: clip;
     line-height: 1;
+    /* --total-scale-factor is set inline by pdf-viewer.js. PDF.js 6
+       writes only per-span custom properties (--font-height, --scale-x,
+       --rotate); turning them into size/transform is this stylesheet's
+       job, mirroring PDF.js's own pdf_viewer.css .textLayer rules. */
+    --scale-round-x: 1px;
+    --scale-round-y: 1px;
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
 }
 
-.pdf-page-text-layer span {
+.pdf-page-text-layer :is(span, br) {
     position: absolute;
     color: transparent;
     white-space: pre;
+    cursor: text;
     transform-origin: 0 0;
+}
+
+.pdf-page-text-layer>span {
+    --font-height: 0;
+    --scale-x: 1;
+    --rotate: 0deg;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 
 .pdf-page-text-layer ::selection {

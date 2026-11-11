@@ -1,0 +1,48 @@
+{%- comment -%}
+Embedded PDF reader markup. Behavior lives in assets/js/pdf-viewer.js
+(loaded only when the page's front matter sets has_pdf: true); styles in
+the "EMBEDDED PDF READER" block of assets/css/components.css.
+
+Usage: include this file with a single src= parameter, a site-relative
+path such as /assets/documents/Flourish.pdf (see _notes/flourish.md).
+
+Every selector below is one pdf-viewer.js queries by name:
+[data-pdf-reader][data-pdf-src] root
+.pdf-reader-frame positioning context for the boundaries
+[data-pdf-viewport] fixed overflow:hidden window
+[data-pdf-pages] translated page stack (JS fills it)
+[data-pdf-status] loading / error text
+svg[data-pdf-boundary=top|bottom] + [data-pdf-boundary-path]
+[data-pdf-hit=top|bottom] invisible drag handles / keyboard sliders
+The svg's width/height/viewBox/path are all set from JS (layoutBoundary),
+so they are deliberately left empty here.
+
+No blank lines in the output on purpose: this is included from Markdown,
+and kramdown ends an HTML block at the first blank line.
+{%- endcomment -%}
+{%- if include.src -%}
+{%- assign pdf_src = include.src | relative_url -%}
+<div class="pdf-reader" data-pdf-reader data-pdf-src="{{ pdf_src }}">
+    <div class="pdf-reader-frame">
+        <svg class="pdf-boundary pdf-boundary--top" data-pdf-boundary="top" aria-hidden="true" focusable="false">
+            <path data-pdf-boundary-path d=""></path>
+        </svg>
+        <div class="pdf-reader-hit pdf-reader-hit--top" data-pdf-hit="top" role="slider" tabindex="0"
+            aria-orientation="vertical" aria-label="Scroll document up. Drag up or press the up arrow."
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        <div class="pdf-reader-viewport" data-pdf-viewport>
+            <p class="pdf-reader-status meta" data-pdf-status role="status" aria-live="polite">Loading document&hellip;
+            </p>
+            <div class="pdf-reader-pages" data-pdf-pages></div>
+        </div>
+        <div class="pdf-reader-hit pdf-reader-hit--bottom" data-pdf-hit="bottom" role="slider" tabindex="0"
+            aria-orientation="vertical" aria-label="Scroll document down. Drag down or press the down arrow."
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+        <svg class="pdf-boundary pdf-boundary--bottom" data-pdf-boundary="bottom" aria-hidden="true" focusable="false">
+            <path data-pdf-boundary-path d=""></path>
+        </svg>
+    </div>
+    <p class="pdf-reader-original meta"><a class="text-link" href="{{ pdf_src }}" target="_blank"
+            rel="noopener noreferrer">Open the original PDF</a></p>
+</div>
+{%- endif -%}
