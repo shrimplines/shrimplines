@@ -318,3 +318,185 @@
         object-fit: contain;
     }
 }
+
+/* ============================================
+   SHRIMPLINES — EMBEDDED PDF READER
+   ============================================
+   Markup from _includes/pdf.html, behavior from assets/js/pdf-viewer.js.
+   Reuses existing tokens only (see main.css :root): --bg-canvas /
+   --color-background for the boundary fill and page gaps, and
+   --color-border for the boundary stroke — the same color the sidebar
+   divider (divider.js) actually renders in, not the accent color.
+
+   Sits inside .note-body (max-width already set above), so it never
+   needs its own column-width rule. */
+
+.pdf-reader {
+    margin: 2rem 0;
+}
+
+.pdf-reader-frame {
+    position: relative;
+    /* A fixed viewing window, not a height that grows with the
+       document — the two boundaries are the only way to move through
+       content taller than this. Clamped so it's usable on both a
+       short note window and a tall desktop viewport. */
+    --pdf-viewport-height: clamp(360px, 60vh, 640px);
+}
+
+/* ---- Boundaries -----------------------------------------------------
+   Each <svg> is taller than its own resting line (MAX_PULL + margin,
+   set from JS) and sits OUTSIDE the viewport's own box (top one lifted
+   above it, bottom one dropped below), so the apex has real room to
+   travel without the parent clipping it. Resting state is a single
+   hairline — identical weight to the divider line — that only becomes
+   expressive once dragged. */
+.pdf-boundary {
+    position: absolute;
+    left: 0;
+    overflow: visible;
+    pointer-events: none;
+    /* z-index above the viewport's own pages, matching the
+       .divider-canvas / .highlight-canvas overlay convention. */
+    z-index: 2;
+}
+
+.pdf-boundary--top {
+    bottom: 100%;
+}
+
+.pdf-boundary--bottom {
+    top: 100%;
+}
+
+.pdf-boundary path {
+    fill: var(--color-background);
+    stroke: var(--color-border);
+    stroke-width: 1;
+    vector-effect: non-scaling-stroke;
+}
+
+/* Invisible drag handles — same "narrow visible line, wide hit target"
+   split as divider.js's canvas/hitEl pair, just on the vertical axis. */
+.pdf-reader-hit {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 28px;
+    cursor: row-resize;
+    touch-action: none;
+    z-index: 3;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.pdf-reader-hit--top {
+    bottom: 100%;
+    margin-bottom: -14px;
+}
+
+.pdf-reader-hit--bottom {
+    top: 100%;
+    margin-top: -14px;
+}
+
+.pdf-reader-hit:focus-visible {
+    outline: 1px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+}
+
+/* ---- Viewport & pages -------------------------------------------------
+   overflow:hidden is deliberate, not overflow:auto — there is no
+   native scrollbar to hide here because there is no native scroll at
+   all; .pdf-reader-pages is moved entirely via transform by
+   pdf-viewer.js. Background is the site token, so the strip of empty
+   space between two pages (and above/below the stack while a boundary
+   is mid-drag) reads as the actual page background, not a new color. */
+.pdf-reader-viewport {
+    position: relative;
+    height: var(--pdf-viewport-height);
+    overflow: hidden;
+    background-color: var(--color-background);
+}
+
+.pdf-reader-pages {
+    position: relative;
+    will-change: transform;
+}
+
+.pdf-page {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.pdf-page:last-child {
+    margin-bottom: 0;
+}
+
+.pdf-page canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+/* PDF.js text layer — invisible, selectable text positioned exactly
+   over the canvas glyphs it mirrors. Added only when pdf-viewer.js
+   successfully builds one (see its TextLayer feature-check); its
+   absence never affects the canvas rendering above. */
+.pdf-page-text-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    line-height: 1;
+}
+
+.pdf-page-text-layer span {
+    position: absolute;
+    color: transparent;
+    white-space: pre;
+    transform-origin: 0 0;
+}
+
+.pdf-page-text-layer ::selection {
+    background: var(--color-highlight);
+}
+
+.pdf-reader-status {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    margin: 0;
+}
+
+.pdf-reader-original {
+    margin: 0.75rem 0 0;
+}
+
+/* ---- Reduced motion ---------------------------------------------------
+   pdf-viewer.js already checks prefers-reduced-motion before running
+   its own spring loop; this just guarantees nothing here introduces a
+   CSS-driven animation of its own to replace it with. */
+@media (prefers-reduced-motion: reduce) {
+    .pdf-reader-pages {
+        transition: none;
+    }
+}
+
+/* ---- Narrow screens ----------------------------------------------------
+   Same breakpoint as the note-body image system above. Taller hit
+   targets compensate for touch's lower pointer precision; the viewport
+   itself shrinks via the clamp() already on --pdf-viewport-height. */
+@media (max-width: 700px) {
+    .pdf-reader-hit {
+        height: 36px;
+    }
+
+    .pdf-reader-hit--top {
+        margin-bottom: -18px;
+    }
+
+    .pdf-reader-hit--bottom {
+        margin-top: -18px;
+    }
+}
