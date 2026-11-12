@@ -393,8 +393,8 @@
    revealed paper shows — is never painted). A low-opacity wash of the
    existing accent token reads as light blue on the canvas colour. */
 .pdf-boundary [data-pdf-boundary-shade] {
-    fill: var(--color-accent);
-    fill-opacity: 0.12;
+    fill: var(--color-background);
+    fill-opacity: 1;
     stroke: none;
 }
 

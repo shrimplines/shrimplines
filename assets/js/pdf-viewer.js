@@ -39,7 +39,7 @@
 // Nothing here ever touches `.content-area`'s own scrolling.
 (function () {
     var MAX_PULL = 56;            // px: pointer travel for full speed == max tent depth == reserved room above/below the window
-    var MAX_SPEED = 1800;         // px/s document speed at full pull
+    var MAX_SPEED = 900;         // px/s document speed at full pull
     var SPEED_EXPONENT = 1.6;     // >1 gives finer control near rest
     var EDGE_MAX = 10;            // px: deepest tent while the document is already at that end (nothing to reveal)
     var FOLLOW_RATE = 40;         // 1/s: how fast the drawn apex catches the pointer (exponential smoothing)
