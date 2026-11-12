@@ -12,9 +12,11 @@ Every selector below is one pdf-viewer.js queries by name:
 [data-pdf-viewport] fixed overflow:hidden window
 [data-pdf-pages] translated page stack (JS fills it)
 [data-pdf-status] loading / error text
-svg[data-pdf-boundary=top|bottom] + [data-pdf-boundary-path]
+svg[data-pdf-boundary=top|bottom] + [data-pdf-boundary-shade]
+(fill: the wedges outside the chevron) + [data-pdf-boundary-path] (stroke:
+the two chevron lines)
 [data-pdf-hit=top|bottom] invisible drag handles / keyboard sliders
-The svg's width/height/viewBox/path are all set from JS (layoutBoundary),
+The svg's width/height/viewBox/path data are all set from JS (layoutBoundary),
 so they are deliberately left empty here.
 
 No blank lines in the output on purpose: this is included from Markdown,
@@ -25,6 +27,7 @@ and kramdown ends an HTML block at the first blank line.
 <div class="pdf-reader" data-pdf-reader data-pdf-src="{{ pdf_src }}">
     <div class="pdf-reader-frame">
         <svg class="pdf-boundary pdf-boundary--top" data-pdf-boundary="top" aria-hidden="true" focusable="false">
+            <path data-pdf-boundary-shade d=""></path>
             <path data-pdf-boundary-path d=""></path>
         </svg>
         <div class="pdf-reader-hit pdf-reader-hit--top" data-pdf-hit="top" role="slider" tabindex="0"
@@ -39,6 +42,7 @@ and kramdown ends an HTML block at the first blank line.
             aria-orientation="vertical" aria-label="Scroll document down. Drag down or press the down arrow."
             aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
         <svg class="pdf-boundary pdf-boundary--bottom" data-pdf-boundary="bottom" aria-hidden="true" focusable="false">
+            <path data-pdf-boundary-shade d=""></path>
             <path data-pdf-boundary-path d=""></path>
         </svg>
     </div>

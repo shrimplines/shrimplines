@@ -332,25 +332,35 @@
    needs its own column-width rule. */
 
 .pdf-reader {
-    margin: 2rem 0;
+    /* The reader reserves its own empty "room" above and below the
+       window (see .pdf-reader-frame), so no outer margin is added. */
+    margin: 0;
 }
 
 .pdf-reader-frame {
     position: relative;
+    /* --pdf-pull-room is set from pdf-viewer.js (MAX_PULL); the 56px
+       fallback only matters before the script runs. The frame is the
+       visible window PLUS that room above and below: the room is where
+       the chevron, its shading, and the revealed tent live, and being
+       real layout space it can never cover neighbouring text or the
+       original-PDF link. */
+    --pdf-pull-room: 56px;
     /* A fixed viewing window, not a height that grows with the
        document — the two boundaries are the only way to move through
        content taller than this. Clamped so it's usable on both a
        short note window and a tall desktop viewport. */
     --pdf-viewport-height: clamp(360px, 60vh, 640px);
+    height: calc(var(--pdf-viewport-height) + 2 * var(--pdf-pull-room));
 }
 
 /* ---- Boundaries -----------------------------------------------------
-   Each <svg> is taller than its own resting line (MAX_PULL + margin,
-   set from JS) and sits OUTSIDE the viewport's own box (top one lifted
-   above it, bottom one dropped below), so the apex has real room to
-   travel without the parent clipping it. Resting state is a single
-   hairline — identical weight to the divider line — that only becomes
-   expressive once dragged. */
+   Each <svg> fills exactly one room strip (top: above the window,
+   bottom: below it); its baseline is the window edge. The apex travels
+   inside the strip, so nothing here depends on overflow:visible escaping
+   a clipping ancestor (.content-area scrolls and clips). Resting state
+   is a single hairline — identical weight to the divider line. Pulled,
+   it is an OPEN chevron: two stroked lines, no base. */
 .pdf-boundary {
     position: absolute;
     left: 0;
@@ -362,22 +372,35 @@
 }
 
 .pdf-boundary--top {
-    bottom: 100%;
+    top: 0;
 }
 
 .pdf-boundary--bottom {
-    top: 100%;
+    bottom: 0;
 }
 
-.pdf-boundary path {
-    fill: var(--color-background);
+/* Stroke: the two chevron lines only. Never filled. */
+.pdf-boundary [data-pdf-boundary-path] {
+    fill: none;
     stroke: var(--color-border);
     stroke-width: 1;
+    stroke-linejoin: miter;
     vector-effect: non-scaling-stroke;
 }
 
+/* Shade: the covering surface OUTSIDE the lines (path is the band down
+   to the apex's height minus the tent, so the tent interior — where the
+   revealed paper shows — is never painted). A low-opacity wash of the
+   existing accent token reads as light blue on the canvas colour. */
+.pdf-boundary [data-pdf-boundary-shade] {
+    fill: var(--color-accent);
+    fill-opacity: 0.12;
+    stroke: none;
+}
+
 /* Invisible drag handles — same "narrow visible line, wide hit target"
-   split as divider.js's canvas/hitEl pair, just on the vertical axis. */
+   split as divider.js's canvas/hitEl pair, just on the vertical axis.
+   Each is centred on its baseline (the window edge). */
 .pdf-reader-hit {
     position: absolute;
     left: 0;
@@ -391,13 +414,11 @@
 }
 
 .pdf-reader-hit--top {
-    bottom: 100%;
-    margin-bottom: -14px;
+    top: calc(var(--pdf-pull-room) - 14px);
 }
 
 .pdf-reader-hit--bottom {
-    top: 100%;
-    margin-top: -14px;
+    bottom: calc(var(--pdf-pull-room) - 14px);
 }
 
 .pdf-reader-hit:focus-visible {
@@ -407,15 +428,19 @@
 }
 
 /* ---- Viewport & pages -------------------------------------------------
+   The viewport fills the whole frame (window + both rooms). Its
+   padding puts the page stack exactly at the window's top edge, and
+   pdf-viewer.js clips it (clip-path) to the window rectangle plus the
+   two tents, so only the tents ever show paper in the room.
    overflow:hidden is deliberate, not overflow:auto — there is no
    native scrollbar to hide here because there is no native scroll at
    all; .pdf-reader-pages is moved entirely via transform by
    pdf-viewer.js. Background is the site token, so the strip of empty
-   space between two pages (and above/below the stack while a boundary
-   is mid-drag) reads as the actual page background, not a new color. */
+   space between two pages reads as the actual page background. */
 .pdf-reader-viewport {
-    position: relative;
-    height: var(--pdf-viewport-height);
+    position: absolute;
+    inset: 0;
+    padding-block: var(--pdf-pull-room);
     overflow: hidden;
     background-color: var(--color-background);
 }
@@ -482,13 +507,13 @@
 
 .pdf-reader-status {
     position: absolute;
-    top: 1rem;
+    top: calc(var(--pdf-pull-room) + 1rem);
     left: 1rem;
     margin: 0;
 }
 
 .pdf-reader-original {
-    margin: 0.75rem 0 0;
+    margin: 0;
 }
 
 /* ---- Reduced motion ---------------------------------------------------
@@ -511,10 +536,10 @@
     }
 
     .pdf-reader-hit--top {
-        margin-bottom: -18px;
+        top: calc(var(--pdf-pull-room) - 18px);
     }
 
     .pdf-reader-hit--bottom {
-        margin-top: -18px;
+        bottom: calc(var(--pdf-pull-room) - 18px);
     }
 }

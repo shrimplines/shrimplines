@@ -15,30 +15,40 @@
 // pages whose front matter sets `has_pdf: true`, so it never ships to
 // pages that don't need it.
 //
-// BOUNDARY PHYSICS — deliberately a simpler relative of divider.js's
-// guitar-string chain, not a reuse of it: a boundary here is a single
-// moving point (the apex), not an 18-point chain, because the shape
-// is one triangle, not a continuous curve. Resting state is just
-// "apex at baseline"; dragging drives the apex straight to the
-// pointer (kinematic, like divider.js's grabbed point); release hands
-// it to the same kind of snapshot-based spring step divider.js uses
-// (read every value from the previous frame, then swap in all at
-// once) so a single point can't develop the kind of in-place-mutation
-// drift divider.js's own comments warn about.
+// BOUNDARY MODEL — a boundary is a single moving point (the apex), not
+// a chain like divider.js's string. Two anchored corners + the apex
+// make an OPEN chevron (two lines, no base). Pulling is a throttle,
+// not a drag: while a boundary is held, how far the pointer is from
+// where it grabbed (b.pull, 0..MAX_PULL) sets a continuous document
+// VELOCITY (px/s, scaled by delta time); holding still keeps the
+// document moving, releasing stops it on the spot. The drawn apex
+// (b.apex) only follows the pull for display. On release it hands off
+// to a spring that is completely independent of the document.
+//
+// REVEAL — the viewport element is taller than the visible window by
+// MAX_PULL above and below ("room"), and is clipped with a polygon
+// (clip-path) that is the window rectangle plus the two tents under
+// the chevrons. So the tent interior shows real pages; the shaded
+// wedges outside the lines are drawn in the room, never over paper.
 //
 // SCROLL MODEL — the boundaries, not a scrollbar, are the only way to
 // move through the document. Internally this is one number,
 // `state.offset` (px into the full stacked-page height), applied as
-// `translateY(-offset)` on .pdf-reader-pages. Dragging the top
-// boundary decreases it (reveals earlier content); dragging the
-// bottom boundary increases it (reveals later content). The viewport
-// itself is `overflow:hidden`, so there is no second scroll
-// mechanism to keep in sync with it, and nothing here ever touches
-// `.content-area`'s own scrolling.
+// `translateY(-offset)` on .pdf-reader-pages. The top boundary
+// decreases it (reveals earlier content); the bottom increases it.
+// Nothing here ever touches `.content-area`'s own scrolling.
 (function () {
-    var MAX_PULL = 56;            // px clamp on the TRIANGLE's visible depth (not on scroll distance)
-    var STIFFNESS = 0.3;          // spring pull toward baseline (apex-only, so gentler than divider.js's chain)
+    var MAX_PULL = 56;            // px: pointer travel for full speed == max tent depth == reserved room above/below the window
+    var MAX_SPEED = 1800;         // px/s document speed at full pull
+    var SPEED_EXPONENT = 1.6;     // >1 gives finer control near rest
+    var EDGE_MAX = 10;            // px: deepest tent while the document is already at that end (nothing to reveal)
+    var FOLLOW_RATE = 40;         // 1/s: how fast the drawn apex catches the pointer (exponential smoothing)
+    var APEX_X_MIN = 0.15;        // apex follows the pointer horizontally, kept inside this fraction of the width
+    var APEX_X_MAX = 0.85;
+    var STEP = 1 / 60;            // spring runs in fixed 60 Hz steps so it feels the same at any refresh rate
+    var STIFFNESS = 0.3;          // spring pull toward baseline, per step
     var DAMPING = 0.78;
+    var X_RETURN = 0.18;          // per-step easing of the apex back to centre after release
     var SETTLE_EPSILON = 0.05;
     var KEY_STEP = 72;            // px per arrow-key press
     var RENDER_MARGIN = '200% 0px'; // IntersectionObserver rootMargin — render pages before they're visible
@@ -50,6 +60,9 @@
         return (document.body && document.body.dataset.baseurl) || '';
     }
 
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function r2(v) { return Math.round(v * 100) / 100; }
+
     // ---- one reader instance ------------------------------------------------
 
     function Reader(root) {
@@ -59,46 +72,52 @@
         this.pagesEl = root.querySelector('[data-pdf-pages]');
         this.statusEl = root.querySelector('[data-pdf-status]');
         this.src = root.dataset.pdfSrc;
+        // Single source of truth for the room above/below the window;
+        // components.css reads it (with the same value as its fallback).
+        root.style.setProperty('--pdf-pull-room', MAX_PULL + 'px');
         this.boundaries = {
             top: this.makeBoundary('top'),
             bottom: this.makeBoundary('bottom')
         };
 
         this.offset = 0;      // current scroll position, px into the full page stack
-        this.maxOffset = 0;   // full stack height minus viewport height, once known
+        this.maxOffset = 0;   // full stack height minus window height, once known
+        this.windowH = 0;     // height of the visible window (viewport box minus the two rooms)
         this.pdf = null;
         this.pageEntries = []; // { el, canvas, pageNumber, naturalWidth, naturalHeight, rendered, renderTask }
         this.resizeRaf = null;
+        this.loopRaf = null;
+        this.lastTime = null;
 
         this.boundInit = this.init.bind(this);
     }
 
     Reader.prototype.makeBoundary = function (side) {
         var svg = this.root.querySelector('svg[data-pdf-boundary="' + side + '"]');
-        var path = svg.querySelector('[data-pdf-boundary-path]');
-        var hit = this.root.querySelector('[data-pdf-hit="' + side + '"]');
         return {
             side: side,
             svg: svg,
-            path: path,
-            hit: hit,
+            path: svg.querySelector('[data-pdf-boundary-path]'),   // the two chevron lines (stroke only)
+            shade: svg.querySelector('[data-pdf-boundary-shade]'), // wedges outside the lines (fill only)
+            hit: this.root.querySelector('[data-pdf-hit="' + side + '"]'),
             width: 0,
-            apex: 0,       // current rendered displacement, px (always >=0; direction is implied by side)
-            velocity: 0,
             dragging: false,
-            dragStartPointerY: 0,
-            dragStartOffset: 0,
-            rafId: null
+            pointerId: null,
+            grabY: 0,
+            pull: 0,       // pointer displacement from the grab point, 0..MAX_PULL — drives document velocity
+            targetX: 0,    // where the pointer wants the apex horizontally
+            apex: 0,       // drawn tent depth, px (>=0; direction is implied by side)
+            apexX: 0,      // drawn apex x, px from the frame's left edge
+            apexVel: 0,    // spring velocity (display only)
+            acc: 0         // leftover time for the fixed-step spring
         };
     };
 
     // ---- layout ---------------------------------------------------------------
 
     Reader.prototype.layoutBoundary = function (b) {
-        var rect = this.frame.getBoundingClientRect();
-        var w = rect.width;
-        var h = MAX_PULL + 8; // resting line + full travel + a hair of margin
-        var dpr = window.devicePixelRatio || 1;
+        var w = this.frame.getBoundingClientRect().width;
+        var h = MAX_PULL + 1; // the room, plus one px so the baseline stroke isn't cut
 
         b.width = w;
         b.svg.setAttribute('width', w);
@@ -106,32 +125,63 @@
         b.svg.style.width = w + 'px';
         b.svg.style.height = h + 'px';
         // viewBox in CSS px keeps the path math below free of DPR concerns;
-        // the svg's own width/height attrs (not viewBox) are what control
-        // on-screen size, so this does not stretch the stroke.
+        // the svg's own width/height attrs (not viewBox) control on-screen
+        // size, so this does not stretch the stroke.
         b.svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        if (!b.dragging) b.apexX = w / 2;
         this.drawBoundary(b);
     };
 
-    // Path geometry: two anchored corners + one apex that moves away from
-    // the PDF rectangle. Top boundary's SVG sits ABOVE the viewport with
-    // its baseline at the SVG's own bottom edge, apex moving further up
-    // (smaller y) as it's pulled — so the fill (between baseline and apex)
-    // is always on the screen-edge side, never over the viewport. Bottom
-    // boundary mirrors this with its baseline at the SVG's top edge.
+    // Open chevron: two anchored corners and one apex, joined by TWO lines
+    // and nothing else. At rest the apex sits on the baseline, so the same
+    // path is just the flat hairline — no separate "resting line" to swap
+    // out, and no horizontal base once pulled.
+    //
+    // Shade: the same two lines closed back along the horizontal through
+    // the apex. That polygon is the band between the baseline and the
+    // apex's height MINUS the tent under the lines, i.e. the region
+    // OUTSIDE the lines; the interior is never filled. Its height is the
+    // pull depth, so it is zero-area at rest.
+    //
+    // The top svg's baseline is its bottom edge (apex moves to smaller y);
+    // the bottom svg's baseline is its top edge (apex moves to larger y).
+    // Both svgs sit in the room beside the window, never over the paper.
     Reader.prototype.drawBoundary = function (b) {
         var w = b.width;
-        var restY = (b.side === 'top') ? (MAX_PULL + 8) : 0;
-        var apexY = (b.side === 'top') ? (restY - b.apex) : (restY + b.apex);
-        var midX = w / 2;
+        var top = (b.side === 'top');
+        var baseY = top ? MAX_PULL : 1;
+        var apexY = top ? baseY - b.apex : baseY + b.apex;
+        var x = clamp(b.apexX, 0, w);
 
-        var d = 'M0,' + restY +
-            ' L' + midX + ',' + apexY +
-            ' L' + w + ',' + restY +
-            ' Z';
-        b.path.setAttribute('d', d);
+        var line = 'M0,' + r2(baseY) + ' L' + r2(x) + ',' + r2(apexY) + ' L' + r2(w) + ',' + r2(baseY);
+        b.path.setAttribute('d', line);
+        b.shade.setAttribute('d', line + ' L' + r2(w) + ',' + r2(apexY) + ' L0,' + r2(apexY) + ' Z');
+        this.applyClip();
+    };
+
+    // The reveal. The viewport box spans the window plus MAX_PULL of room
+    // above and below; this polygon is the window rectangle with each
+    // edge pushed out into the room to the chevron's apex. Everything the
+    // polygon contains is real page content, everything outside it is
+    // the page background. Coordinates are viewport-local (== frame-local).
+    Reader.prototype.applyClip = function () {
+        var t = this.boundaries.top;
+        var b = this.boundaries.bottom;
+        var w = t.width;
+        if (!w || !this.windowH) return;
+        var y0 = MAX_PULL;
+        var y1 = MAX_PULL + this.windowH;
+        var pts = [
+            [0, y0], [clamp(t.apexX, 0, w), y0 - t.apex], [w, y0],
+            [w, y1], [clamp(b.apexX, 0, w), y1 + b.apex], [0, y1]
+        ];
+        var poly = 'polygon(' + pts.map(function (p) { return r2(p[0]) + 'px ' + r2(p[1]) + 'px'; }).join(',') + ')';
+        this.viewport.style.clipPath = poly;
+        this.viewport.style.webkitClipPath = poly;
     };
 
     Reader.prototype.layout = function () {
+        this.windowH = Math.max(0, this.viewport.clientHeight - 2 * MAX_PULL);
         this.layoutBoundary(this.boundaries.top);
         this.layoutBoundary(this.boundaries.bottom);
         this.layoutPages();
@@ -165,7 +215,7 @@
         }, this);
 
         this.stackHeight = y;
-        this.maxOffset = Math.max(0, this.stackHeight - this.viewport.clientHeight);
+        this.maxOffset = Math.max(0, this.stackHeight - this.windowH);
         this.setOffset(this.offset, true); // re-clamp without animating
         // Only pages whose scale actually changed need a new canvas.
         changed.forEach(function (entry) { this.scheduleRerender(entry); }, this);
@@ -188,99 +238,156 @@
         this.boundaries.bottom.hit.setAttribute('aria-valuenow', pct);
     };
 
-    // ---- drag interaction ---------------------------------------------------
+    // ---- pull interaction ---------------------------------------------------
+    // Pointer handlers only record WHERE the pointer is (b.pull, b.targetX);
+    // everything that moves — document, apex, spring — happens in tick().
 
     Reader.prototype.bindBoundary = function (b) {
         var self = this;
+        var top = (b.side === 'top');
 
         function pointerDown(evt) {
+            if (b.dragging) return;
+            if (evt.pointerType === 'mouse' && evt.button !== 0) return;
             b.dragging = true;
-            b.dragStartPointerY = evt.clientY;
-            b.dragStartOffset = self.offset;
+            b.pointerId = evt.pointerId;
+            b.grabY = evt.clientY;
+            b.pull = 0;        // measured from the grab point, so grabbing never jumps the speed
+            b.apexVel = 0;
+            b.targetX = self.pointerToApexX(b, evt.clientX);
             try { b.hit.setPointerCapture(evt.pointerId); } catch (e) { /* ignore */ }
-            self.ensureSpringLoop(b);
+            self.ensureLoop();
             evt.preventDefault();
         }
 
         function pointerMove(evt) {
-            if (!b.dragging) return;
-            var dy = evt.clientY - b.dragStartPointerY;
-            // Top: dragging UP (negative dy) reveals earlier content.
-            // Bottom: dragging DOWN (positive dy) reveals later content.
-            var reveal = (b.side === 'top') ? -dy : dy;
-            if (reveal < 0) reveal = 0; // a boundary only ever pulls outward, never inverts
-            self.setOffset((b.side === 'top') ?
-                b.dragStartOffset - reveal :
-                b.dragStartOffset + reveal);
-            b.apex = Math.min(MAX_PULL, reveal);
-            self.drawBoundary(b);
+            if (!b.dragging || evt.pointerId !== b.pointerId) return;
+            var dy = evt.clientY - b.grabY;
+            // Top: moving UP pulls outward. Bottom: moving DOWN pulls outward.
+            // Moving back past the grab point just returns to zero speed.
+            b.pull = clamp(top ? -dy : dy, 0, MAX_PULL);
+            b.targetX = self.pointerToApexX(b, evt.clientX);
         }
 
-        function pointerUp(evt) {
-            if (!b.dragging) return;
+        // Release, cancel and lost capture all land here. Clearing
+        // `dragging` is what stops the document: tick() only scrolls
+        // while it is true.
+        function pointerEnd(evt) {
+            if (!b.dragging || evt.pointerId !== b.pointerId) return;
             b.dragging = false;
+            b.pull = 0;
+            b.pointerId = null;
             try { b.hit.releasePointerCapture(evt.pointerId); } catch (e) { /* ignore */ }
-            self.ensureSpringLoop(b); // let it settle back to 0
+            if (reducedMotion) {
+                // No multi-frame animation: snap flat.
+                b.apex = 0; b.apexVel = 0; b.apexX = b.width / 2;
+                self.drawBoundary(b);
+            } else {
+                self.ensureLoop();
+            }
         }
 
         b.hit.addEventListener('pointerdown', pointerDown);
         b.hit.addEventListener('pointermove', pointerMove);
-        b.hit.addEventListener('pointerup', pointerUp);
-        b.hit.addEventListener('pointercancel', pointerUp);
+        b.hit.addEventListener('pointerup', pointerEnd);
+        b.hit.addEventListener('pointercancel', pointerEnd);
+        b.hit.addEventListener('lostpointercapture', pointerEnd);
         // touch-action:none (CSS) plus this stops the one case CSS can't:
         // a drag that started on the hitbox selecting page text as it
         // crosses over the PDF content underneath.
         b.hit.addEventListener('dragstart', function (e) { e.preventDefault(); });
 
         b.hit.addEventListener('keydown', function (evt) {
-            var deltaKey = (b.side === 'top') ? 'ArrowUp' : 'ArrowDown';
-            var oppositeKey = (b.side === 'top') ? 'ArrowDown' : 'ArrowUp';
+            var deltaKey = top ? 'ArrowUp' : 'ArrowDown';
+            var oppositeKey = top ? 'ArrowDown' : 'ArrowUp';
             if (evt.key !== deltaKey && evt.key !== oppositeKey) return;
             evt.preventDefault();
             var dir = (evt.key === deltaKey) ? 1 : -1;
             var current = self.offset;
-            var target = (b.side === 'top') ? current - dir * KEY_STEP : current + dir * KEY_STEP;
+            var target = top ? current - dir * KEY_STEP : current + dir * KEY_STEP;
             self.setOffset(target);
             if (!reducedMotion) {
                 b.apex = Math.min(MAX_PULL, KEY_STEP * 0.5);
+                b.apexX = b.width / 2;
+                b.apexVel = 0;
                 self.drawBoundary(b);
-                self.ensureSpringLoop(b);
+                self.ensureLoop();
             }
         });
     };
 
-    // One spring step, snapshot style (matches divider.js's own note on
-    // why in-place mutation during the loop is unsafe — not applicable
-    // here with only one point, but the same discipline is kept).
-    Reader.prototype.springStep = function (b) {
-        if (b.dragging) return false;
-        var force = STIFFNESS * (0 - b.apex);
-        b.velocity = (b.velocity + force) * DAMPING;
-        b.apex = b.apex + b.velocity;
-        if (b.apex < 0) b.apex = 0;
-        var settled = Math.abs(b.apex) < SETTLE_EPSILON && Math.abs(b.velocity) < SETTLE_EPSILON;
-        if (settled) { b.apex = 0; b.velocity = 0; }
-        this.drawBoundary(b);
-        return settled;
+    Reader.prototype.pointerToApexX = function (b, clientX) {
+        var rect = this.frame.getBoundingClientRect();
+        return clamp(clientX - rect.left, rect.width * APEX_X_MIN, rect.width * APEX_X_MAX);
     };
 
-    Reader.prototype.ensureSpringLoop = function (b) {
+    // Pull (0..1) -> document speed in px/s.
+    function pullToSpeed(pull) {
+        return MAX_SPEED * Math.pow(clamp(pull / MAX_PULL, 0, 1), SPEED_EXPONENT);
+    }
+
+    // Soft cap on the tent when the document can't move that way any
+    // more: slope 1 at 0 (no kink), asymptote EDGE_MAX.
+    function edgeResist(pull) {
+        return EDGE_MAX * (1 - Math.exp(-pull / EDGE_MAX));
+    }
+
+    // One frame for one boundary. Returns true while it still needs frames.
+    Reader.prototype.stepBoundary = function (b, dt) {
+        var top = (b.side === 'top');
+
+        if (b.dragging) {
+            // 1) Document: velocity from the CURRENT pull, integrated over
+            //    real elapsed time. Runs every frame whether or not the
+            //    pointer moves, so holding still keeps scrolling.
+            var speed = pullToSpeed(b.pull);
+            if (speed > 0) this.setOffset(this.offset + (top ? -1 : 1) * speed * dt);
+
+            // 2) Display: the tent follows the pull, but shrinks to a
+            //    small rubber-band once the document has hit this end.
+            var atLimit = top ? this.offset <= 0 : this.offset >= this.maxOffset;
+            var desired = atLimit ? edgeResist(b.pull) : b.pull;
+            var k = 1 - Math.exp(-FOLLOW_RATE * dt); // smoothing hides the step when the end is reached
+            b.apex += (desired - b.apex) * k;
+            b.apexX += (b.targetX - b.apexX) * k;
+            this.drawBoundary(b);
+            return true;
+        }
+
+        // Released: spring only. Nothing in this branch touches the offset.
+        if (b.apex === 0 && b.apexVel === 0 && b.apexX === b.width / 2) return false; // idle: skip redundant DOM writes
+        b.acc += dt;
+        var settled = false;
+        while (b.acc >= STEP && !settled) {
+            b.acc -= STEP;
+            b.apexVel = (b.apexVel + STIFFNESS * (0 - b.apex)) * DAMPING;
+            b.apex += b.apexVel;
+            if (b.apex < 0) b.apex = 0;
+            b.apexX += (b.width / 2 - b.apexX) * X_RETURN;
+            settled = Math.abs(b.apex) < SETTLE_EPSILON && Math.abs(b.apexVel) < SETTLE_EPSILON;
+        }
+        if (b.apex === 0 && b.apexVel === 0) settled = true; // already flat (e.g. reduced-motion release)
+        if (settled) { b.apex = 0; b.apexVel = 0; b.apexX = b.width / 2; b.acc = 0; }
+        this.drawBoundary(b);
+        return !settled;
+    };
+
+    // Single rAF loop for the reader; it sleeps whenever both boundaries
+    // are at rest. dt is clamped so a backgrounded tab can't teleport the
+    // document when it wakes up.
+    Reader.prototype.ensureLoop = function () {
         var self = this;
-        if (b.rafId !== null) return;
+        if (this.loopRaf !== null) return;
+        this.lastTime = null;
 
-        if (reducedMotion) {
-            // No multi-frame animation: resolve immediately to the resting
-            // (or, mid-drag, current) shape instead of easing toward it.
-            if (!b.dragging) { b.apex = 0; b.velocity = 0; this.drawBoundary(b); }
-            return;
+        function frame(now) {
+            var dt = (self.lastTime === null) ? 0 : Math.min((now - self.lastTime) / 1000, 0.05);
+            self.lastTime = now;
+            var topActive = self.stepBoundary(self.boundaries.top, dt);
+            var bottomActive = self.stepBoundary(self.boundaries.bottom, dt);
+            self.loopRaf = (topActive || bottomActive) ? window.requestAnimationFrame(frame) : null;
         }
-
-        function loop() {
-            var settled = self.springStep(b);
-            if (!b.dragging && settled) { b.rafId = null; return; }
-            b.rafId = window.requestAnimationFrame(loop);
-        }
-        b.rafId = window.requestAnimationFrame(loop);
+        this.loopRaf = window.requestAnimationFrame(frame);
     };
 
     // ---- PDF.js wiring ----------------------------------------------------
