@@ -1,0 +1,30 @@
+{%- comment -%}
+Renders the project listing for one category, title order.
+
+    {% include project-list.html category="builds" %}
+
+Pulls straight from the _projects collection, so adding a Markdown
+file to _projects/ is the only step needed for a project to appear
+here. Nothing about a project is hard-coded in this file or in
+content/projects.html.
+
+Mirrors _includes/note-list.html's structure, but with its own class
+names (.project-list*, not .note-list*) rather than reusing notes'
+classes for a different kind of listing, and sorts by title instead
+of date since a project has no required date field.
+{%- endcomment -%}
+{%- assign items = site.projects | where: "category", include.category | sort: "title" -%}
+{%- if items.size > 0 -%}
+<ul class="project-list">
+    {%- for project in items %}
+    <li class="project-list-item">
+        <a class="project-list-link text-link" href="{{ project.url | relative_url }}">{{ project.title }}</a>
+        {%- if project.date %}
+        <time class="project-list-date meta" datetime="{{ project.date | date: '%Y-%m-%d' }}">{{ project.date | date: '%Y.%m.%d' }}</time>
+        {%- endif %}
+    </li>
+    {%- endfor %}
+</ul>
+{%- else -%}
+<p class="project-list-empty meta">Nothing here yet.</p>
+{%- endif -%}

@@ -10,6 +10,15 @@
     <link rel="stylesheet" href="{{ '/assets/css/layout.css' | relative_url }}">
     <link rel="stylesheet" href="{{ '/assets/css/components.css' | relative_url }}">
     <link rel="stylesheet" href="{{ '/assets/css/main.css' | relative_url }}">
+    {% if page.project_css %}
+    {% comment %}
+    Per-project stylesheet, scoped to exactly one page via front
+    matter (see _projects/rocks.md: project_css: rocks). Mirrors the
+    has_pdf pattern below — loaded only where a project actually
+    needs it, never site-wide.
+    {% endcomment %}
+    <link rel="stylesheet" href="{{ '/assets/css/' | append: page.project_css | append: '.css' | relative_url }}">
+    {% endif %}
 </head>
 
 {% comment %}
@@ -45,6 +54,22 @@ which parent/child to highlight without any client-side fetch.
     <script src="{{ '/assets/js/game-of-life.js' | relative_url }}"></script>
     <script src="{{ '/assets/js/about-page.js' | relative_url }}"></script>
     <script src="{{ '/assets/js/divider.js' | relative_url }}"></script>
+    {% if page.project_js %}
+    {% comment %}
+    Per-project script, scoped to exactly one page via front matter
+    (see _projects/rocks.md: project_js: rocks), same pattern as
+    project_css above. uses_matter is a separate flag so a project
+    that doesn't need Matter.js never pulls it in. Matter.js loads
+    first since a project's own script may depend on the global it
+    defines. Pinned version, loaded from jsDelivr since there's no
+    self-hosted copy in assets/js/ yet (unlike PDF.js) — flagged in
+    the task report as worth revisiting for consistency.
+    {% endcomment %}
+    {% if page.uses_matter %}
+    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+    {% endif %}
+    <script src="{{ '/assets/js/' | append: page.project_js | append: '.js' | relative_url }}"></script>
+    {% endif %}
     {% if page.has_pdf %}
     {% comment %}
     Only loaded on pages that actually embed a PDF reader (front matter

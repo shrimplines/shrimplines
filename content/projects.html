@@ -1,16 +1,28 @@
-<h1>Projects content</h1>
+---
+# Empty-ish front matter is required so Jekyll runs Liquid on this file.
+# No `layout:` — this stays a bare fragment, exactly as main.js expects,
+# and still builds to /content/projects.html.
+#
+# This was previously missing entirely, which is why this page was a
+# hardcoded placeholder: without front matter Jekyll does not run
+# Liquid on a file, so the {% include %} tags below would have been
+# copied out verbatim instead of rendering.
+title: Projects
+---
+
+<h1 class="page-header">Projects content</h1>
 
 <section id="builds" class="content-section">
-    <h2>Builds</h2>
-    <p>Builds placeholder content.</p>
+    <h2 class="chapter-heading">Builds</h2>
+    {% include project-list.html category="builds" %}
 </section>
 
 <section id="experiments" class="content-section">
-    <h2>Experiments</h2>
-    <p>Experiments placeholder content.</p>
+    <h2 class="chapter-heading">Experiments</h2>
+    {% include project-list.html category="experiments" %}
 </section>
 
 <section id="archive" class="content-section">
-    <h2>Archive</h2>
-    <p>Archive placeholder content.</p>
+    <h2 class="chapter-heading">Archive</h2>
+    {% include project-list.html category="archive" %}
 </section>

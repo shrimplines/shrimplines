@@ -66,6 +66,7 @@ defaults:
       path: ""
       type: "projects"
     values:
+      layout: "project"
       router: "off"
       section: "projects"
 
